@@ -1,0 +1,52 @@
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# RedwoodHQ specific large files/dirs
+RedwoodHQ/data/
+RedwoodHQ/public/agentsetup/
+*.exe
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+*.egg-info/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+# Ignore large files and unnecessary directories
+venv/
+RedwoodHQ/data/
+RedwoodHQ/public/agentsetup/
+*.exe
+*.log
+.DS_Store
+
+# Ignore large files and unnecessary directories
+venv/
+RedwoodHQ/data/
+RedwoodHQ/public/agentsetup/
+*.exe
+*.log
+.DS_Store
+venv/
+RedwoodHQ/data/
+RedwoodHQ/public/agentsetup/
+*.exe
+*.log
+.DS_Store
