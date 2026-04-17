@@ -1,0 +1,1 @@
+2026-03-22 15:38:09.889 | INFO     | core.llm.llm_client:__init__:180 - LLM客户端已初始化: openai, 模型: gpt-4-turbo-preview

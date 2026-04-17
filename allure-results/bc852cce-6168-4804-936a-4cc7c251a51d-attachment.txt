@@ -1,0 +1,16 @@
+2026-03-22 15:41:38.584 | INFO     | core.llm.llm_client:__init__:180 - LLM客户端已初始化: openai, 模型: gpt-4-turbo-preview
+2026-03-22 15:41:38.585 | INFO     | core.base.page_base:navigate:34 - 导航到: https://test-aicc.airudder.com/login
+2026-03-22 15:41:38.585 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='username']
+2026-03-22 15:41:38.585 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='password']
+2026-03-22 15:41:38.585 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: button[type='submit']
+2026-03-22 15:41:38.585 | DEBUG    | core.base.page_base:wait_for_element:67 - 元素已visible: .user-menu
+2026-03-22 15:41:38.585 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: .logout-btn
+2026-03-22 15:41:38.585 | DEBUG    | core.base.page_base:wait_for_element:67 - 元素已visible: .user-menu
+2026-03-22 15:41:39.396 | ERROR    | dashboard.power_bi_collector:authenticate:58 - Power BI认证异常: Unable to get authority configuration for https://login.microsoftonline.com/your_tenant_id. Authority would typically be in a format of https://login.microsoftonline.com/your_tenant Also please double check your tenant name or GUID is correct.
+2026-03-22 15:41:39.396 | WARNING  | dashboard.power_bi_collector:_push_to_power_bi:189 - Power BI认证失败，数据未推送
+2026-03-22 15:41:39.404 | ERROR    | ai_test_framework.conftest:pytest_runtest_makereport:76 - 测试失败: test_login_logout_flow, tests/ui/test_pds_cases.py:356: in test_login_logout_flow
+    assert not login_test_page.is_logged_in(), "登出后应该不在登录状态"
+E   AssertionError: 登出后应该不在登录状态
+E   assert not True
+E    +  where True = <bound method LoginTestPage.is_logged_in of <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c70bb0>>()
+E    +    where <bound method LoginTestPage.is_logged_in of <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c70bb0>> = <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c70bb0>.is_logged_in

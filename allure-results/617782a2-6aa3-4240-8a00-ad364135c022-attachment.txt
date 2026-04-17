@@ -1,0 +1,22 @@
+2026-03-22 15:41:38.554 | INFO     | core.llm.llm_client:__init__:180 - LLM客户端已初始化: openai, 模型: gpt-4-turbo-preview
+2026-03-22 15:41:38.555 | INFO     | core.base.page_base:navigate:34 - 导航到: https://test-aicc.airudder.com/login
+2026-03-22 15:41:38.555 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='username']
+2026-03-22 15:41:38.555 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='password']
+2026-03-22 15:41:38.555 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: button[type='submit']
+2026-03-22 15:41:38.555 | DEBUG    | core.base.page_base:wait_for_element:67 - 元素已visible: .user-menu
+2026-03-22 15:41:38.556 | INFO     | llm_services.defect_analysis.defect_analyzer:analyze_failure:50 - 开始分析测试失败: test_login_empty_username
+2026-03-22 15:41:38.566 | ERROR    | ai_test_framework.conftest:pytest_runtest_makereport:76 - 测试失败: test_login_empty_username, tests/ui/test_pds_cases.py:238: in test_login_empty_username
+    assert not login_test_page.is_logged_in(), "空用户名应该登录失败"
+E   AssertionError: 空用户名应该登录失败
+E   assert not True
+E    +  where True = <bound method LoginTestPage.is_logged_in of <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c42a60>>()
+E    +    where <bound method LoginTestPage.is_logged_in of <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c42a60>> = <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c42a60>.is_logged_in
+
+During handling of the above exception, another exception occurred:
+tests/ui/test_pds_cases.py:253: in test_login_empty_username
+    analysis = defect_analyzer.analyze_failure(
+llm_services/defect_analysis/defect_analyzer.py:74: in analyze_failure
+    analysis = self._parse_analysis(result.get("analysis", ""))
+llm_services/defect_analysis/defect_analyzer.py:114: in _parse_analysis
+    for line in lines:
+E   TypeError: 'Mock' object is not iterable

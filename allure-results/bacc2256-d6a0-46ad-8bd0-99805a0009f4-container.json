@@ -1,0 +1,1 @@
+{"uuid": "c5a85ff7-1929-4e16-ba17-9a259ad7fc36", "children": ["91b514c6-9bf2-4d33-bc41-fb746c81d670"], "befores": [{"name": "mock_power_bi_collector", "status": "passed", "start": 1774165089893, "stop": 1774165089893}], "start": 1774165089893, "stop": 1774165090255}

@@ -1,0 +1,8 @@
+2026-03-22 15:41:37.293 | INFO     | core.llm.llm_client:__init__:180 - LLM客户端已初始化: openai, 模型: gpt-4-turbo-preview
+2026-03-22 15:41:37.294 | INFO     | core.base.page_base:navigate:34 - 导航到: https://test-aicc.airudder.com/login
+2026-03-22 15:41:37.294 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='username']
+2026-03-22 15:41:37.295 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='password']
+2026-03-22 15:41:37.295 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: button[type='submit']
+2026-03-22 15:41:37.295 | DEBUG    | core.base.page_base:wait_for_element:67 - 元素已visible: .user-menu
+2026-03-22 15:41:38.397 | ERROR    | dashboard.power_bi_collector:authenticate:58 - Power BI认证异常: Unable to get authority configuration for https://login.microsoftonline.com/your_tenant_id. Authority would typically be in a format of https://login.microsoftonline.com/your_tenant Also please double check your tenant name or GUID is correct.
+2026-03-22 15:41:38.397 | WARNING  | dashboard.power_bi_collector:_push_to_power_bi:189 - Power BI认证失败，数据未推送

@@ -1,0 +1,34 @@
+.CodeMirror {
+    height: inherit;
+    width: inherit;
+}
+
+
+.CodeMirror-activeline {background: #e8f2ff !important;}
+.codemirror-field,
+.codemirror-field tbody,
+.codemirror-field tbody tr,
+.codemirror-field tbody tr td {
+    height: inherit !important;
+    width: inherit !important;
+}
+
+.codemirror-field td.x-form-item-body  {
+    vertical-align: top;
+}​
+
+.CodeMirror-fullscreen {
+     display: block;
+     position: absolute;
+     top: 0; left: 0;
+     width: 100%;
+     z-index: 9999;
+ }
+
+.CodeMirror-diff, .CodeMirror-diff .CodeMirror {
+    height: inherit;
+}
+
+.CodeMirror-diff-pane {
+    height: 100%;
+}

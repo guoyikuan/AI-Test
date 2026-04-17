@@ -1,0 +1,4 @@
+❌ PDS-005: 登录登出流程测试 - 失败: 登出后应该不在登录状态
+assert not True
+ +  where True = <bound method LoginTestPage.is_logged_in of <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c70bb0>>()
+ +    where <bound method LoginTestPage.is_logged_in of <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c70bb0>> = <ai_test_framework.tests.ui.test_pds_cases.LoginTestPage object at 0x121c70bb0>.is_logged_in

@@ -1,0 +1,40 @@
+# 核心测试框架
+playwright==1.40.0
+pytest==7.4.3
+pytest-playwright==0.4.3
+pytest-html==4.1.1
+pytest-xdist==3.5.0
+robotframework==6.1.1
+robotframework-playwright==0.1.0
+
+# LLM集成
+langchain==0.1.0
+langchain-openai==0.0.2
+langchain-community==0.0.10
+openai==1.6.1
+anthropic==0.18.1
+
+# 数据处理
+pandas==2.1.4
+openpyxl==3.1.2
+numpy==1.26.2
+
+# Power BI数据收集
+requests==2.31.0
+azure-identity==1.15.0
+msal==1.25.0
+
+# 工具库
+python-dotenv==1.0.0
+loguru==0.7.2
+pydantic==2.5.3
+pyyaml==6.0.1
+
+# 报告生成
+allure-pytest==2.13.2
+jsonpath-ng==1.6.1
+
+# 其他
+selenium==4.15.2
+webdriver-manager==4.0.1
+

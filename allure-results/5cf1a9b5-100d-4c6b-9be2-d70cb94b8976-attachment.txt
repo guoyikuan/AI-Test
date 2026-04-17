@@ -1,0 +1,1 @@
+2026-03-22 15:52:22.212 | ERROR    | dashboard.power_bi_collector:authenticate:58 - Power BI认证异常: Unable to get authority configuration for https://login.microsoftonline.com/your_tenant_id. Authority would typically be in a format of https://login.microsoftonline.com/your_tenant Also please double check your tenant name or GUID is correct.

@@ -1,0 +1,68 @@
+version: '3.8'
+services:
+  # Firefox版本（推荐用于macOS兼容性）
+  ai_test_framework_firefox:
+    build: .
+    volumes:
+      - .:/app:cached
+    working_dir: /app
+    environment:
+      - BASE_URL=https://test-aicc.airudder.com
+      - TEST_USER=testsuperadmin
+      - TEST_PASSWORD=Passw0rd!1234
+      - LLM_PROVIDER=openai
+      - OPENAI_API_KEY=fakekey123
+      - BROWSER_TYPE=firefox
+      - HEADLESS=true
+    command: pytest tests/ui/test_pds_from_excel.py --tb=short -x
+    container_name: ai_test_firefox
+
+  # Chromium版本（跨平台兼容性好）
+  ai_test_framework_chromium:
+    build: .
+    volumes:
+      - .:/app:cached
+    working_dir: /app
+    environment:
+      - BASE_URL=https://test-aicc.airudder.com
+      - TEST_USER=testsuperadmin
+      - TEST_PASSWORD=Passw0rd!1234
+      - LLM_PROVIDER=openai
+      - OPENAI_API_KEY=fakekey123
+      - BROWSER_TYPE=chromium
+      - HEADLESS=true
+    command: pytest tests/ui/test_pds_from_excel.py --tb=short -x
+    container_name: ai_test_chromium
+
+  # WebKit版本（Safari兼容性测试）
+  ai_test_framework_webkit:
+    build: .
+    volumes:
+      - .:/app:cached
+    working_dir: /app
+    environment:
+      - BASE_URL=https://test-aicc.airudder.com
+      - TEST_USER=testsuperadmin
+      - TEST_PASSWORD=Passw0rd!1234
+      - LLM_PROVIDER=openai
+      - OPENAI_API_KEY=fakekey123
+      - BROWSER_TYPE=webkit
+      - HEADLESS=true
+    command: pytest tests/ui/test_pds_from_excel.py --tb=short -x
+    container_name: ai_test_webkit
+
+  # 默认服务（Chromium）
+  ai_test_framework:
+    build: .
+    volumes:
+      - .:/app:cached
+    working_dir: /app
+    environment:
+      - BASE_URL=https://test-aicc.airudder.com
+      - TEST_USER=testsuperadmin
+      - TEST_PASSWORD=Passw0rd!1234
+      - LLM_PROVIDER=openai
+      - OPENAI_API_KEY=fakekey123
+      - BROWSER_TYPE=chromium
+      - HEADLESS=true
+    command: pytest tests/ui/test_pds_from_excel.py --tb=short -x

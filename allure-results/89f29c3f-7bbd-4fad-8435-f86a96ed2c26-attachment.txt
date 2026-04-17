@@ -1,0 +1,24 @@
+2026-03-22 15:42:09.841 | INFO     | core.llm.llm_client:__init__:180 - LLM客户端已初始化: openai, 模型: gpt-4-turbo-preview
+2026-03-22 15:42:09.843 | INFO     | core.base.page_base:navigate:34 - 导航到: https://test-aicc.airudder.com/login
+2026-03-22 15:42:09.844 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='username']
+2026-03-22 15:42:09.844 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: input[name='password']
+2026-03-22 15:42:09.845 | INFO     | core.self_healing.self_healing:find_element:50 - 元素定位成功: button[type='submit']
+2026-03-22 15:42:09.846 | DEBUG    | core.base.page_base:wait_for_element:67 - 元素已visible: .error-message
+2026-03-22 15:42:09.846 | DEBUG    | core.base.page_base:wait_for_element:67 - 元素已visible: .error-message
+2026-03-22 15:42:09.847 | INFO     | llm_services.defect_analysis.defect_analyzer:analyze_failure:50 - 开始分析测试失败: test_login_failure_wrong_password
+2026-03-22 15:42:10.081 | ERROR    | ai_test_framework.conftest:pytest_runtest_makereport:76 - 测试失败: test_login_failure_wrong_password, tests/ui/test_pds_cases.py:196: in test_login_failure_wrong_password
+    error_msg = login_test_page.get_error_message()
+tests/ui/test_pds_cases.py:74: in get_error_message
+    return self.get_text(selector)
+core/base/page_base.py:112: in get_text
+    logger.debug(f"获取文本 {selector}: {text[:50]}...")
+E   TypeError: 'Mock' object is not subscriptable
+
+During handling of the above exception, another exception occurred:
+tests/ui/test_pds_cases.py:213: in test_login_failure_wrong_password
+    analysis = defect_analyzer.analyze_failure(
+llm_services/defect_analysis/defect_analyzer.py:74: in analyze_failure
+    analysis = self._parse_analysis(result.get("analysis", ""))
+llm_services/defect_analysis/defect_analyzer.py:114: in _parse_analysis
+    for line in lines:
+E   TypeError: 'Mock' object is not iterable
