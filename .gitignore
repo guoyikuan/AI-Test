@@ -4,14 +4,15 @@ env/
 .venv/
 
 # RedwoodHQ specific large files/dirs
-# 注意：如果文件夹嵌套在如 RedwoodHQMac_250 等目录下，确保这些父目录也被忽略或路径正确
-RedwoodHQ/data/
-RedwoodHQ/public/agentsetup/
-*.exe
-*.log
-*.mdb
-*.ldb
-WiredTiger*
+# 使用通配符确保忽略任何路径下的 RedwoodHQ 数据、日志和数据库文件
+**/RedwoodHQ/data/
+**/RedwoodHQ/public/agentsetup/
+**/*.exe
+**/*.log
+**/*.mdb
+**/*.ldb
+**/WiredTiger*
+**/journal/
 
 # Python
 __pycache__/
@@ -33,5 +34,3 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
-
-
