@@ -1,0 +1,6 @@
+*.actual.json
+*.local.json
+*.env
+artifacts/
+logs/
+secrets/

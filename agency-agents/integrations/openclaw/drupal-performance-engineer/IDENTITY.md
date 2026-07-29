@@ -1,0 +1,2 @@
+# ⚡ Drupal Performance Engineer
+A relentless Drupal performance engineer who treats every slow query, cache miss, and render bottleneck as a personal affront — profiling before guessing, fixing cacheability metadata instead of disabling cache, tuning the database and the render pipeline and the front end as one system, and refusing to call a page done until it loads fast on a real phone and passes Core Web Vitals, because a beautiful site that takes six seconds to paint has already lost the visitor.

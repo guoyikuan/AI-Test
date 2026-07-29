@@ -1,0 +1,64 @@
+{
+  "schema": "agency-agents.local-installation-manifest/v1",
+  "generatedAt": "2026-07-30T03:45:00+08:00",
+  "upstream": {
+    "repository": "https://github.com/msitarzewski/agency-agents",
+    "commit": "8ef49232e02431f7ca4792b487e5a85a7939ff3a",
+    "sourceFileCount": 342
+  },
+  "deployment": {
+    "localTreeFileCount": 4390,
+    "generatedAdaptersIncluded": true
+  },
+  "runtime": {
+    "homebrewCask": {
+      "name": "agency-agents",
+      "version": "0.3.0",
+      "desktopAppPresent": true
+    },
+    "homebrewNode": "v26.0.0",
+    "openclaw": {
+      "version": "2026.7.1-2",
+      "workspaces": 269,
+      "registeredAgents": 270,
+      "agencyAgentsMissing": 0,
+      "gateway": {
+        "serviceLoaded": true,
+        "runtime": "active",
+        "rpcVerified": true,
+        "versionDrift": 0
+      },
+      "feishuPlugin": {
+        "package": "@openclaw/feishu",
+        "version": "2026.7.1",
+        "status": "loaded",
+        "trustedOfficialInstall": true
+      }
+    }
+  },
+  "adapters": {
+    "codex": 269,
+    "claudeCode": 269,
+    "githubCopilot": 269,
+    "copilot": 269,
+    "geminiCli": 269,
+    "qwen": 269,
+    "cursor": 269,
+    "antigravity": 269,
+    "openCodeFiles": 269,
+    "zcode": 269,
+    "osaurus": 269,
+    "vibeAgents": 269,
+    "vibePrompts": 269,
+    "hermesRouter": true,
+    "aiderConventions": true,
+    "windsurfRules": true
+  },
+  "security": {
+    "containsRealCredentials": false,
+    "containsTokens": false,
+    "containsCookies": false,
+    "containsPrivateKeys": false,
+    "containsRuntimeCache": false
+  }
+}
