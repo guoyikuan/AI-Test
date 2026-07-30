@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agency-agents.local/governance/schemas/role-governance-profile.schema.json",
+  "title": "Agency Agents Role Governance Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "role_id",
+    "role_name",
+    "division",
+    "risk_level",
+    "allowed_read_actions",
+    "allowed_write_actions",
+    "forbidden_actions",
+    "risk_rules",
+    "allowed_systems",
+    "approval_matrix",
+    "source_hash",
+    "policy_source",
+    "exception_source"
+  ],
+  "properties": {
+    "role_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "role_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "division": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "allowed_read_actions": {"type": "array", "$ref": "#/$defs/actionList"},
+    "allowed_write_actions": {"type": "array", "$ref": "#/$defs/actionList"},
+    "forbidden_actions": {"type": "array", "$ref": "#/$defs/actionList"},
+    "risk_rules": {"type": "array", "$ref": "#/$defs/actionList"},
+    "allowed_systems": {"type": "array", "$ref": "#/$defs/actionList"},
+    "approval_matrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "medium", "high"],
+      "properties": {
+        "low": {"$ref": "#/$defs/actionList"},
+        "medium": {"$ref": "#/$defs/actionList"},
+        "high": {"$ref": "#/$defs/actionList"}
+      }
+    },
+    "source_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "policy_source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "exception_source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "$defs": {
+    "actionList": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      }
+    }
+  }
+}

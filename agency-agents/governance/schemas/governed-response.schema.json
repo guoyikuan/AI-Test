@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agency-agents.local/governance/schemas/governed-response.schema.json",
+  "title": "Agency Agents Governed Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decision",
+    "role",
+    "risk_level",
+    "plan",
+    "evidence",
+    "learning_report",
+    "human_actions_needed"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["ALLOW", "NEED_APPROVAL", "BLOCK"]
+    },
+    "role": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "plan": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step",
+          "action",
+          "reason",
+          "preconditions",
+          "acceptance",
+          "rollback"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "action": {"$ref": "#/$defs/boundedText"},
+          "reason": {"$ref": "#/$defs/boundedText"},
+          "preconditions": {"$ref": "#/$defs/boundedText"},
+          "acceptance": {"$ref": "#/$defs/boundedText"},
+          "rollback": {"$ref": "#/$defs/boundedText"}
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {"$ref": "#/$defs/boundedText"}
+    },
+    "learning_report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "successes",
+        "failures",
+        "human_interventions",
+        "patterns",
+        "proposal"
+      ],
+      "properties": {
+        "successes": {"$ref": "#/$defs/textList"},
+        "failures": {"$ref": "#/$defs/textList"},
+        "human_interventions": {"$ref": "#/$defs/textList"},
+        "patterns": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/boundedText"}
+        },
+        "proposal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "confidence"],
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "confidence": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        }
+      }
+    },
+    "human_actions_needed": {"$ref": "#/$defs/textList"}
+  },
+  "$defs": {
+    "boundedText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "textList": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {"$ref": "#/$defs/boundedText"}
+    }
+  }
+}
