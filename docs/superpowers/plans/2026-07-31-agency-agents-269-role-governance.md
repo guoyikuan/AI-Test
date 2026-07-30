@@ -145,6 +145,8 @@ Use this exact template structure in `governance/base-prompt.zh-CN.md`:
       "step": 1,
       "action": "",
       "reason": "",
+      "preconditions": "",
+      "acceptance": "",
       "rollback": ""
     }
   ],
@@ -160,6 +162,7 @@ Use this exact template structure in `governance/base-prompt.zh-CN.md`:
   "learning_report": {
     "successes": [],
     "failures": [],
+    "human_interventions": [],
     "patterns": [],
     "proposal": {
       "text": "",
