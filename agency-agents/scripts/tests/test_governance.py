@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 
-from governance import GovernanceValidationError, load_schema, validate_profile
+from governance import load_schema, validate_profile, validate_response
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +71,64 @@ class GovernanceContractTests(unittest.TestCase):
             ],
             3,
         )
+        self.assertEqual(schema["properties"]["evidence"]["minItems"], 7)
+        self.assertEqual(schema["properties"]["evidence"]["maxItems"], 7)
+        self.assertTrue(schema["properties"]["evidence"]["uniqueItems"])
+
+    def _valid_response(self):
+        return {
+            "decision": "ALLOW",
+            "role": "frontend-dev",
+            "risk_level": "low",
+            "plan": [{
+                "step": 1,
+                "action": "读取已授权输入",
+                "reason": "完成任务解析",
+                "preconditions": "输入已在授权域",
+                "acceptance": "返回结构化结果",
+                "rollback": "不写入外部系统",
+            }],
+            "evidence": [
+                "request_id",
+                "actor",
+                "timestamp",
+                "input_hash",
+                "result",
+                "failure_reason",
+                "rollback",
+            ],
+            "learning_report": {
+                "successes": [],
+                "failures": [],
+                "human_interventions": [],
+                "patterns": [],
+                "proposal": {"text": "", "confidence": 0},
+            },
+            "human_actions_needed": [],
+        }
+
+    def test_governed_response_accepts_valid_fixed_object(self):
+        self.assertEqual(validate_response(self._valid_response()), [])
+
+    def test_governed_response_rejects_unknown_top_level_field(self):
+        response = self._valid_response()
+        response["unexpected"] = True
+        self.assertTrue(validate_response(response))
+
+    def test_governed_response_rejects_more_than_five_plan_steps(self):
+        response = self._valid_response()
+        response["plan"] = response["plan"] * 6
+        self.assertTrue(validate_response(response))
+
+    def test_governed_response_rejects_more_than_three_patterns(self):
+        response = self._valid_response()
+        response["learning_report"]["patterns"] = ["a", "b", "c", "d"]
+        self.assertTrue(validate_response(response))
+
+    def test_governed_response_rejects_incomplete_evidence(self):
+        response = self._valid_response()
+        response["evidence"] = response["evidence"][:-1]
+        self.assertTrue(validate_response(response))
 
     def test_role_governance_profile_declares_complete_identity_and_policy_contract(self):
         schema = json.loads(
@@ -134,19 +192,19 @@ class GovernanceContractTests(unittest.TestCase):
         self.assertIn("每次始终输出完整固定 JSON", text)
 
     def test_profile_validator_accepts_complete_profile(self):
-        self.assertTrue(validate_profile(self._valid_profile()))
+        self.assertEqual(validate_profile(self._valid_profile()), [])
 
     def test_profile_validator_rejects_unknown_field(self):
         profile = self._valid_profile()
         profile["unexpected"] = True
-        with self.assertRaises(GovernanceValidationError):
-            validate_profile(profile)
+        errors = validate_profile(profile)
+        self.assertEqual(errors, sorted(errors))
+        self.assertTrue(errors)
 
     def test_profile_validator_rejects_action_list_bound(self):
         profile = self._valid_profile()
         profile["allowed_read_actions"] = ["action-{}".format(index) for index in range(101)]
-        with self.assertRaises(GovernanceValidationError):
-            validate_profile(profile)
+        self.assertTrue(validate_profile(profile))
 
     def test_schema_loader_rejects_unknown_or_traversal_names(self):
         self.assertEqual(load_schema("role-governance-profile")["title"], "Agency Agents Role Governance Profile")

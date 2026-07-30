@@ -57,8 +57,21 @@
     },
     "evidence": {
       "type": "array",
-      "maxItems": 50,
-      "items": {"$ref": "#/$defs/boundedText"}
+      "minItems": 7,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "request_id",
+          "actor",
+          "timestamp",
+          "input_hash",
+          "result",
+          "failure_reason",
+          "rollback"
+        ]
+      }
     },
     "learning_report": {
       "type": "object",

@@ -56,59 +56,76 @@ def _type_matches(value, expected):
 
 
 def _validate(value, schema, root, path):
+    errors = _validation_errors(value, schema, root, path)
+    if errors:
+        raise GovernanceValidationError(errors[0])
+
+
+def _validation_errors(value, schema, root, path):
     if "$ref" in schema:
-        _validate(value, _resolve_ref(root, schema["$ref"]), root, path)
+        schema = _resolve_ref(root, schema["$ref"])
+
+    errors = []
     if "type" in schema and not _type_matches(value, schema["type"]):
-        raise GovernanceValidationError("{} must be {}".format(path, schema["type"]))
+        return ["{} must be {}".format(path, schema["type"])]
     if "enum" in schema and value not in schema["enum"]:
-        raise GovernanceValidationError("{} is not an allowed enum value".format(path))
+        errors.append("{} is not an allowed enum value".format(path))
 
     if isinstance(value, dict):
         missing = [name for name in schema.get("required", []) if name not in value]
         if missing:
-            raise GovernanceValidationError("{} missing required fields: {}".format(path, ", ".join(missing)))
+            errors.append("{} missing required fields: {}".format(path, ", ".join(sorted(missing))))
         properties = schema.get("properties", {})
         if schema.get("additionalProperties") is False:
             unknown = sorted(set(value) - set(properties))
             if unknown:
-                raise GovernanceValidationError("{} has unknown fields: {}".format(path, ", ".join(unknown)))
-        for name, child in value.items():
+                errors.append("{} has unknown fields: {}".format(path, ", ".join(unknown)))
+        for name, child in sorted(value.items()):
             if name in properties:
-                _validate(child, properties[name], root, "{}.{}".format(path, name))
+                errors.extend(_validation_errors(child, properties[name], root, "{}.{}".format(path, name)))
 
     if isinstance(value, list):
         if schema.get("uniqueItems"):
             encoded = [json.dumps(item, sort_keys=True, separators=(",", ":")) for item in value]
             if len(encoded) != len(set(encoded)):
-                raise GovernanceValidationError("{} must contain unique items".format(path))
+                errors.append("{} must contain unique items".format(path))
         if "items" in schema:
             for index, child in enumerate(value):
-                _validate(child, schema["items"], root, "{}[{}]".format(path, index))
+                errors.extend(_validation_errors(child, schema["items"], root, "{}[{}]".format(path, index)))
         if "minItems" in schema and len(value) < schema["minItems"]:
-            raise GovernanceValidationError("{} has fewer than minItems".format(path))
+            errors.append("{} has fewer than minItems".format(path))
         if "maxItems" in schema and len(value) > schema["maxItems"]:
-            raise GovernanceValidationError("{} exceeds maxItems".format(path))
+            errors.append("{} exceeds maxItems".format(path))
 
     if isinstance(value, str):
         if "minLength" in schema and len(value) < schema["minLength"]:
-            raise GovernanceValidationError("{} is shorter than minLength".format(path))
+            errors.append("{} is shorter than minLength".format(path))
         if "maxLength" in schema and len(value) > schema["maxLength"]:
-            raise GovernanceValidationError("{} exceeds maxLength".format(path))
+            errors.append("{} exceeds maxLength".format(path))
         if "pattern" in schema and re.fullmatch(schema["pattern"], value) is None:
-            raise GovernanceValidationError("{} does not match pattern".format(path))
+            errors.append("{} does not match pattern".format(path))
 
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
-            raise GovernanceValidationError("{} is below minimum".format(path))
+            errors.append("{} is below minimum".format(path))
         if "maximum" in schema and value > schema["maximum"]:
-            raise GovernanceValidationError("{} exceeds maximum".format(path))
+            errors.append("{} exceeds maximum".format(path))
+    return errors
+
+
+def _validate_contract(document, schema_name):
+    schema = load_schema(schema_name)
+    return sorted(set(_validation_errors(document, schema, schema, "$")))
 
 
 def validate_profile(profile):
-    """Validate one role profile and return True; invalid input raises ValueError."""
-    schema = load_schema("role-governance-profile")
-    _validate(profile, schema, schema, "$")
-    return True
+    """Return a sorted error list; return [] when the role profile is valid."""
+    return _validate_contract(profile, "role-governance-profile")
 
 
-__all__ = ["GovernanceValidationError", "load_schema", "validate_profile"]
+def validate_response(response):
+    """Return a sorted error list; return [] when a governed response is valid."""
+    return _validate_contract(response, "governed-response")
+
+
+__all__ = ["GovernanceValidationError", "load_schema", "validate_profile", "validate_response"]
