@@ -1,10 +1,11 @@
 import json
 import re
+import tempfile
 import unittest
 from pathlib import Path
 
 from governance import load_schema, validate_profile, validate_response
-from scripts.governance import build_profiles
+from scripts.governance import GovernanceError, build_profiles, discover_agents
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,6 +32,7 @@ class GovernanceContractTests(unittest.TestCase):
                 "external_side_effect": "current-user-and-supervisor",
             },
             "source_hash": "a" * 64,
+            "source_path": "engineering/frontend-dev.md",
             "policy_source": "governance/policies/engineering.json",
             "exception_source": "governance/exceptions/engineering.json",
         }
@@ -154,6 +156,7 @@ class GovernanceContractTests(unittest.TestCase):
                 "allowed_systems",
                 "approval_matrix",
                 "source_hash",
+                "source_path",
                 "policy_source",
                 "exception_source",
             ],
@@ -264,6 +267,49 @@ class GovernanceContractTests(unittest.TestCase):
         for profile in first:
             self.assertRegex(profile["source_hash"], r"^[0-9a-f]{64}$")
 
+    def test_agent_discovery_carries_deterministic_authority_text(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "divisions.json").write_text(
+                json.dumps({"divisions": {"engineering": {}}}),
+                encoding="utf-8",
+            )
+            division = root / "engineering"
+            division.mkdir()
+            (division / "authority-sample.md").write_text(
+                "---\n"
+                "name: Authority Sample\n"
+                "authority: Explicit authority boundary\n"
+                "description: Explicit description\n"
+                "responsibility: Explicit responsibility\n"
+                "---\n\n# Sample\n",
+                encoding="utf-8",
+            )
+            first = discover_agents(root)[0]
+            second = discover_agents(root)[0]
+            self.assertEqual(
+                first.authority,
+                "Explicit authority boundary | Explicit description | Explicit responsibility",
+            )
+            self.assertEqual(first.authority, second.authority)
+
+    def test_duplicate_role_id_failure_is_isolated_and_deterministic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "divisions.json").write_text(
+                json.dumps({"divisions": {"design": {}, "engineering": {}}}),
+                encoding="utf-8",
+            )
+            for division in ("design", "engineering"):
+                path = root / division
+                path.mkdir()
+                (path / "duplicate-role.md").write_text(
+                    "---\nname: Duplicate Role\ndescription: Test authority\n---\n",
+                    encoding="utf-8",
+                )
+            with self.assertRaisesRegex(GovernanceError, "DUPLICATE_ROLE_ID"):
+                discover_agents(root)
+
     def test_sensitive_title_or_authority_roles_have_explicit_overrides(self):
         profiles = build_profiles(ROOT)
         overrides = json.loads(
@@ -284,17 +330,29 @@ class GovernanceContractTests(unittest.TestCase):
             "telephony",
         )
 
+        agents_by_id = {agent.role_id: agent for agent in discover_agents(ROOT)}
         sensitive_profiles = []
         for profile in profiles:
-            authority = json.dumps(
-                profile.get("authority", ""), ensure_ascii=False
-            ).lower()
+            agent = agents_by_id[profile["role_id"]]
+            authority = json.dumps(agent.authority, ensure_ascii=False).lower()
             title_or_authority = " ".join(
                 (profile["role_name"].lower(), authority)
             )
             if any(term in title_or_authority for term in sensitive_terms):
                 sensitive_profiles.append(profile)
 
+        discovered_ids = {profile["role_id"] for profile in profiles}
+        sensitive_ids = {profile["role_id"] for profile in sensitive_profiles}
+        self.assertEqual(
+            sensitive_ids - override_ids,
+            set(),
+            "sensitive roles missing explicit overrides",
+        )
+        self.assertEqual(
+            override_ids - discovered_ids,
+            set(),
+            "overrides contain stale undiscovered roles",
+        )
         self.assertTrue(sensitive_profiles)
         for profile in sensitive_profiles:
             self.assertIn(profile["role_id"], override_ids)

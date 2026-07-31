@@ -44,9 +44,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -55,14 +53,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "academic",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#academic-geographer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/academic",
-    "risk_level": "low",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -155,9 +153,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -166,14 +162,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "academic",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#academic-psychologist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/academic",
-    "risk_level": "low",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -1072,10 +1068,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -1084,14 +1077,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-ai-data-remediation-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -1112,10 +1105,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -1124,14 +1114,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-ai-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -1192,10 +1182,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -1204,14 +1191,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-autonomous-optimization-architect",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -1312,10 +1299,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -1324,14 +1308,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-code-reviewer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -2263,10 +2247,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -2275,14 +2256,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-llm-post-training-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -2420,10 +2401,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -2432,14 +2410,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-multi-agent-systems-architect",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -2617,10 +2595,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -2629,14 +2604,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-prompt-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -2657,10 +2632,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -2669,14 +2641,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-rag-pipeline-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -2857,10 +2829,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -2869,14 +2838,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-section-508-specialist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -2977,10 +2946,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -2989,14 +2955,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-solidity-smart-contract-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -3094,10 +3060,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -3106,14 +3069,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "engineering",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#engineering-uswds-developer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/engineering",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -3914,9 +3877,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -3925,14 +3886,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "gis",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#gis-qa-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/gis",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -3988,9 +3949,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -3999,14 +3958,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "gis",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#gis-spatial-data-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/gis",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -4247,9 +4206,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -4258,14 +4215,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#government-digital-presales-consultant",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -4570,9 +4527,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -4581,14 +4536,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#hr-onboarding",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -4821,9 +4776,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -4832,14 +4785,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#loan-officer-assistant",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -5117,9 +5070,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -5128,14 +5079,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "marketing",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#marketing-baidu-seo-specialist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/marketing",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -5376,9 +5327,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -5387,14 +5336,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "marketing",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#marketing-cross-border-ecommerce",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/marketing",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -5742,9 +5691,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -5753,14 +5700,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "marketing",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#marketing-podcast-strategist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/marketing",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -5925,9 +5872,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -5936,14 +5881,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "marketing",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#marketing-short-video-editing-coach",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/marketing",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -6293,9 +6238,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -6304,14 +6247,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#medical-billing-coding-specialist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -6404,9 +6347,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -6415,14 +6356,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#organizational-psychologist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -6441,9 +6382,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -6452,14 +6391,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "paid-media",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#paid-media-auditor",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/paid-media",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -6959,9 +6898,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -6970,14 +6907,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "project-management",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#project-management-jira-workflow-steward",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/project-management",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -7218,9 +7155,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -7229,14 +7164,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#recruitment-specialist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -7440,9 +7375,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -7451,14 +7384,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "game-development",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#roblox-systems-scripter",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/game-development",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -8323,9 +8256,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -8334,14 +8265,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#specialized-civil-engineer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -8397,9 +8328,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -8408,14 +8337,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#specialized-cultural-intelligence-strategist",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -8434,9 +8363,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -8445,14 +8372,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "specialized",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#specialized-developer-advocate",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/specialized",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -9022,9 +8949,7 @@
     "allowed_systems": [
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -9033,14 +8958,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "support",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#support-infrastructure-maintainer",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/support",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",
@@ -9365,10 +9290,7 @@
       "authorized_development_api",
       "local_workspace"
     ],
-    "allowed_write_actions": [
-      "write_authorized_branch",
-      "write_local_draft"
-    ],
+    "allowed_write_actions": [],
     "approval_matrix": {
       "external_side_effect": "current-user-and-supervisor",
       "high": "current-user-and-supervisor",
@@ -9377,14 +9299,14 @@
       "write": "current-user-and-supervisor"
     },
     "division": "testing",
-    "exception_source": "governance/role-overrides.json#none",
+    "exception_source": "governance/role-overrides.json#testing-reality-checker",
     "forbidden_actions": [
       "external_send",
       "production_change",
       "sensitive_data_write"
     ],
     "policy_source": "governance/department-policies.json#departments/testing",
-    "risk_level": "medium",
+    "risk_level": "high",
     "risk_rules": [
       "default_deny",
       "human_approval_for_high_risk",

@@ -24,6 +24,7 @@ class Agent:
     division: str
     source_path: str
     source_sha256: str
+    authority: str = ''
 
 APPROVAL_MATRIX = {
     'low': 'self-service',
@@ -32,6 +33,30 @@ APPROVAL_MATRIX = {
     'write': 'current-user-and-supervisor',
     'external_side_effect': 'current-user-and-supervisor',
 }
+
+SENSITIVE_TERMS = (
+    'security',
+    'finance',
+    'financial',
+    'legal',
+    'compliance',
+    'production',
+    'release',
+    'permission',
+    'external',
+    'call',
+    'telephony',
+)
+
+AUTHORITY_METADATA_KEYS = (
+    'authority',
+    'description',
+    'responsibility',
+    'responsibilities',
+    'role',
+    'mission',
+    'scope',
+)
 
 def load_json(path: Path) -> dict[str, Any]:
     try:
@@ -50,11 +75,34 @@ def parse_frontmatter_agent(path: Path, repo_root: Path) -> Agent | None:
     end = text.find('\n---', 4)
     if end < 0:
         raise GovernanceError('UNTERMINATED_FRONTMATTER:{}'.format(path))
+    metadata: dict[str, list[str]] = {key: [] for key in AUTHORITY_METADATA_KEYS}
+    for line in text[4:end].splitlines():
+        if ':' not in line:
+            continue
+        key, value = line.split(':', 1)
+        key = key.strip().lower()
+        value = value.strip().strip('"')
+        if key in metadata and value and value not in metadata[key]:
+            metadata[key].append(value)
     name = next((line.split(':', 1)[1].strip().strip('"') for line in text[4:end].splitlines() if line.startswith('name:')), '')
     if not name:
         raise GovernanceError('MISSING_AGENT_NAME:{}'.format(path))
+    authority = ' | '.join(
+        value
+        for key in AUTHORITY_METADATA_KEYS
+        for value in metadata[key]
+    )
+    if not authority:
+        raise GovernanceError('MISSING_AGENT_AUTHORITY:{}'.format(path))
     source_path = path.relative_to(repo_root).as_posix()
-    return Agent(path.stem, name, source_path.split('/', 1)[0], source_path, hashlib.sha256(content).hexdigest())
+    return Agent(
+        path.stem,
+        name,
+        source_path.split('/', 1)[0],
+        source_path,
+        hashlib.sha256(content).hexdigest(),
+        authority,
+    )
 
 def discover_agents(repo_root: Path) -> list[Agent]:
     divisions = load_json(repo_root / 'divisions.json').get('divisions')
@@ -77,8 +125,18 @@ def _override(agent: Agent, overrides: dict[str, Any]) -> dict[str, Any]:
         raise GovernanceError('INVALID_OVERRIDE:{}'.format(agent.role_id))
     return result
 
+def is_sensitive_agent(agent: Agent) -> bool:
+    title_or_authority = '{} {}'.format(agent.name, agent.authority).lower()
+    return any(term in title_or_authority for term in SENSITIVE_TERMS)
+
 def classify_risk(agent: Agent, policy: dict[str, Any], overrides: dict[str, Any]) -> str:
-    risk = _override(agent, overrides).get('risk_level', policy.get('risk_level'))
+    override = _override(agent, overrides)
+    if is_sensitive_agent(agent):
+        if not override:
+            raise GovernanceError('MISSING_SENSITIVE_OVERRIDE:{}'.format(agent.role_id))
+        if override.get('risk_level') != 'high':
+            raise GovernanceError('SENSITIVE_OVERRIDE_NOT_HIGH:{}'.format(agent.role_id))
+    risk = override.get('risk_level', policy.get('risk_level'))
     if risk not in {'low', 'medium', 'high'}:
         raise GovernanceError('INVALID_RISK_LEVEL:{}'.format(agent.role_id))
     return risk
@@ -91,7 +149,8 @@ def resolve_profile(agent: Agent, policies: dict[str, Any], overrides: dict[str,
     override = _override(agent, overrides)
     risk = classify_risk(agent, policy, overrides)
     profile = {
-        'role_id': agent.role_id, 'role_name': agent.name, 'division': agent.division, 'risk_level': risk,
+        'role_id': agent.role_id, 'role_name': agent.name,
+        'division': agent.division, 'risk_level': risk,
         'allowed_read_actions': sorted(policy.get('allowed_read_actions', [])),
         'allowed_write_actions': [] if risk == 'high' else sorted(policy.get('allowed_write_actions', [])),
         'forbidden_actions': sorted(policy.get('forbidden_actions', [])),

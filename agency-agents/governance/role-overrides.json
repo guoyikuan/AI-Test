@@ -1,4 +1,12 @@
 {
+  "academic-geographer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "academic-psychologist": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "accounts-payable-agent": {
     "reason": "finance_commitment",
     "risk_level": "high"
@@ -19,6 +27,22 @@
     "reason": "legal_compliance",
     "risk_level": "high"
   },
+  "engineering-ai-data-remediation-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "engineering-ai-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "engineering-autonomous-optimization-architect": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "engineering-code-reviewer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "engineering-devops-automator": {
     "reason": "production_operations",
     "risk_level": "high"
@@ -31,16 +55,44 @@
     "reason": "production_operations",
     "risk_level": "high"
   },
+  "engineering-llm-post-training-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "engineering-mobile-release-engineer": {
     "reason": "release",
+    "risk_level": "high"
+  },
+  "engineering-multi-agent-systems-architect": {
+    "reason": "sensitive_authority_metadata",
     "risk_level": "high"
   },
   "engineering-payments-billing-engineer": {
     "reason": "finance_commitment",
     "risk_level": "high"
   },
+  "engineering-prompt-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "engineering-rag-pipeline-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "engineering-section-508-specialist": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "engineering-solidity-smart-contract-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "engineering-sre": {
     "reason": "production_operations",
+    "risk_level": "high"
+  },
+  "engineering-uswds-developer": {
+    "reason": "sensitive_authority_metadata",
     "risk_level": "high"
   },
   "engineering-voice-ai-integration-engineer": {
@@ -67,12 +119,28 @@
     "reason": "finance_commitment",
     "risk_level": "high"
   },
+  "gis-qa-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "gis-spatial-data-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "government-digital-presales-consultant": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
   "healthcare-customer-service": {
     "reason": "real_calls",
     "risk_level": "high"
   },
   "healthcare-marketing-compliance": {
     "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "hr-onboarding": {
+    "reason": "sensitive_authority_metadata",
     "risk_level": "high"
   },
   "identity-graph-operator": {
@@ -91,6 +159,18 @@
     "reason": "legal_compliance",
     "risk_level": "high"
   },
+  "loan-officer-assistant": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "marketing-baidu-seo-specialist": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "marketing-cross-border-ecommerce": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "marketing-email-strategist": {
     "reason": "external_sending",
     "risk_level": "high"
@@ -99,12 +179,44 @@
     "reason": "external_sending",
     "risk_level": "high"
   },
+  "marketing-podcast-strategist": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "marketing-pr-communications-manager": {
     "reason": "external_sending",
     "risk_level": "high"
   },
+  "marketing-short-video-editing-coach": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "marketing-social-media-strategist": {
     "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "medical-billing-coding-specialist": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "organizational-psychologist": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "paid-media-auditor": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "project-management-jira-workflow-steward": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "recruitment-specialist": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "roblox-systems-scripter": {
+    "reason": "sensitive_authority_metadata",
     "risk_level": "high"
   },
   "sales-account-strategist": {
@@ -191,8 +303,16 @@
     "reason": "security_administration",
     "risk_level": "high"
   },
-  "specialized-customer-service": {
-    "reason": "real_calls",
+  "specialized-civil-engineer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "specialized-cultural-intelligence-strategist": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
+  "specialized-developer-advocate": {
+    "reason": "sensitive_authority_metadata",
     "risk_level": "high"
   },
   "specialized-fedramp-rmf-compliance": {
@@ -203,12 +323,20 @@
     "reason": "finance_commitment",
     "risk_level": "high"
   },
+  "support-infrastructure-maintainer": {
+    "reason": "sensitive_authority_metadata",
+    "risk_level": "high"
+  },
   "support-legal-compliance-checker": {
     "reason": "legal_compliance",
     "risk_level": "high"
   },
   "support-support-responder": {
     "reason": "real_calls",
+    "risk_level": "high"
+  },
+  "testing-reality-checker": {
+    "reason": "sensitive_authority_metadata",
     "risk_level": "high"
   }
 }

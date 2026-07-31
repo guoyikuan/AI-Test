@@ -124,6 +124,7 @@
     "allowed_systems",
     "approval_matrix",
     "source_hash",
+    "source_path",
     "policy_source",
     "exception_source"
   ],
