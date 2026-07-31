@@ -320,10 +320,21 @@ def _relative_source(repo_root: Path, source: Path) -> tuple[Path, str]:
     return resolved, relative
 
 
-def _bound_profile(repo_root: Path, source: Path) -> tuple[dict[str, Any], str]:
+def _bound_profile(
+    repo_root: Path,
+    source: Path,
+    *,
+    agents_by_source: dict[str, Agent] | None = None,
+    profiles_by_id: dict[str, dict[str, Any]] | None = None,
+) -> tuple[dict[str, Any], str]:
     source, relative = _relative_source(repo_root, source)
-    agents = {agent.source_path: agent for agent in discover_agents(repo_root)}
-    agent = agents.get(relative)
+    if agents_by_source is None:
+        agents_by_source = {
+            agent.source_path: agent for agent in discover_agents(repo_root)
+        }
+    if profiles_by_id is None:
+        profiles_by_id = _profiles_by_id(repo_root)
+    agent = agents_by_source.get(relative)
     if agent is None:
         raise GovernanceError('UNKNOWN_AGENT_SOURCE:{}'.format(relative))
     raw = source.read_bytes()
@@ -345,7 +356,7 @@ def _bound_profile(repo_root: Path, source: Path) -> tuple[dict[str, Any], str]:
         raise GovernanceError('MISSING_GOVERNANCE_BINDING:{}'.format(relative))
     if binding != agent.role_id:
         raise GovernanceError('MISMATCHED_GOVERNANCE_BINDING:{}'.format(relative))
-    profile = _profiles_by_id(repo_root).get(binding)
+    profile = profiles_by_id.get(binding)
     if profile is None:
         raise GovernanceError('MISSING_GOVERNANCE_PROFILE:{}'.format(binding))
     if profile.get('source_path') != relative:
@@ -376,6 +387,17 @@ def _compact_matrix(matrix: Any) -> str:
         for key in ('low', 'medium', 'high', 'write', 'external_side_effect')
         if key in matrix
     )
+
+
+def _collect_cleanup_failures(temporary_paths: list[Path]) -> list[str]:
+    failures: list[str] = []
+    for temporary in temporary_paths:
+        try:
+            if temporary.exists():
+                os.unlink(temporary)
+        except OSError as error:
+            failures.append('{}:{}'.format(temporary, error))
+    return failures
 
 
 def render_governance(repo_root: Path, source: Path) -> str:
@@ -459,7 +481,11 @@ def _write_staged_file(path: Path, replacement: bytes) -> tuple[Path, int]:
             os.fsync(handle.fileno())
             os.fchmod(handle.fileno(), mode)
     except OSError as error:
-        temporary.unlink(missing_ok=True)
+        cleanup_failures = _collect_cleanup_failures([temporary])
+        if cleanup_failures:
+            raise GovernanceError(
+                'ATOMIC_WRITE_PREPARE_FAILED:{}:{}'.format(path, ';'.join(cleanup_failures))
+            ) from error
         raise GovernanceError('ATOMIC_WRITE_PREPARE_FAILED:{}'.format(path)) from error
     return temporary, mode
 
@@ -487,9 +513,18 @@ def _rollback_to_original(
             os.fsync(handle.fileno())
             os.fchmod(handle.fileno(), mode)
         _replace_from_temp(temporary, destination)
-    except OSError as error:
-        temporary.unlink(missing_ok=True)
+    except (OSError, GovernanceError) as error:
+        cleanup_failures = _collect_cleanup_failures([temporary])
+        if cleanup_failures:
+            raise GovernanceError(
+                'ROLLBACK_FAILED:{}'.format(';'.join(cleanup_failures))
+            ) from error
         raise GovernanceError('BIND_ROLLBACK_FAILED:{}'.format(destination)) from error
+    cleanup_failures = _collect_cleanup_failures([temporary])
+    if cleanup_failures:
+        raise GovernanceError(
+            'BIND_CLEANUP_FAILED:{}'.format(';'.join(cleanup_failures))
+        )
 
 
 def bind_sources(repo_root: Path) -> int:
@@ -515,8 +550,11 @@ def bind_sources(repo_root: Path) -> int:
             try:
                 temporary, mode = _write_staged_file(path, replacement)
             except GovernanceError:
-                for cleanup in prepared_temps:
-                    cleanup.unlink(missing_ok=True)
+                cleanup_failures = _collect_cleanup_failures(prepared_temps)
+                if cleanup_failures:
+                    raise GovernanceError(
+                        'BIND_CLEANUP_FAILED:{}'.format(';'.join(cleanup_failures))
+                    )
                 raise
             replacements.append((path, temporary, original, mode))
             prepared_temps.append(temporary)
@@ -524,11 +562,10 @@ def bind_sources(repo_root: Path) -> int:
         return 0
 
     replaced: list[tuple[Path, bytes, int]] = []
-    for index, (path, temporary, original, mode) in enumerate(replacements):
+    for path, temporary, original, mode in replacements:
         try:
             _replace_from_temp(temporary, path)
             replaced.append((path, original, mode))
-            temporary.unlink(missing_ok=True)
         except GovernanceError as error:
             failure = GovernanceError('BIND_REPLACE_FAILED:{}'.format(path))
             rollback_errors: list[str] = []
@@ -537,17 +574,26 @@ def bind_sources(repo_root: Path) -> int:
                     _rollback_to_original(rollback_path, rollback_original, rollback_mode)
                 except GovernanceError as rollback_error:
                     rollback_errors.append(str(rollback_error))
-            for rollback_temp in (item[1] for item in replacements[index:]):
-                rollback_temp.unlink(missing_ok=True)
+            cleanup_failures = _collect_cleanup_failures(
+                [item[1] for item in replacements]
+            )
             if rollback_errors:
+                if cleanup_failures:
+                    rollback_errors.extend(cleanup_failures)
                 raise GovernanceError(
                     'ROLLBACK_FAILED:{}'.format(';'.join(rollback_errors))
-                ) from failure
+                ) from error
+            if cleanup_failures:
+                raise GovernanceError(
+                    'BIND_CLEANUP_FAILED:{}'.format(';'.join(cleanup_failures))
+                ) from error
             raise failure from error
 
-    for temporary in prepared_temps:
-        if temporary.exists():
-            temporary.unlink(missing_ok=True)
+    cleanup_failures = _collect_cleanup_failures(prepared_temps)
+    if cleanup_failures:
+        raise GovernanceError(
+            'BIND_CLEANUP_FAILED:{}'.format(';'.join(cleanup_failures))
+        )
     return len(replacements)
 
 
@@ -556,10 +602,16 @@ def verify_bindings(repo_root: Path) -> int:
     repo_root = repo_root.resolve()
     agents = discover_agents(repo_root)
     profiles = _profiles_by_id(repo_root)
+    agents_by_source = {agent.source_path: agent for agent in agents}
     if len(agents) != len(profiles):
         raise GovernanceError('PROFILE_DISCOVERY_COUNT_MISMATCH')
     for agent in agents:
-        profile, _ = _bound_profile(repo_root, repo_root / agent.source_path)
+        profile, _ = _bound_profile(
+            repo_root,
+            repo_root / agent.source_path,
+            agents_by_source=agents_by_source,
+            profiles_by_id=profiles,
+        )
         if profile['role_id'] != agent.role_id:
             raise GovernanceError('MISMATCHED_GOVERNANCE_BINDING:{}'.format(agent.source_path))
     return len(agents)

@@ -513,6 +513,35 @@ class GovernanceContractTests(unittest.TestCase):
         finally:
             directory.cleanup()
 
+    def test_verify_bindings_rejects_removed_governance_profile(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            source = fixture_root / discover_agents(fixture_root)[0].source_path
+            source.write_bytes(self._remove_governance_profile_line(source.read_bytes()))
+            with self.assertRaisesRegex(
+                GovernanceError,
+                "MISSING_GOVERNANCE_BINDING",
+            ):
+                verify_bindings(fixture_root)
+        finally:
+            directory.cleanup()
+
+    def test_verify_bindings_discovers_each_source_once(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            original_discover_agents = governance.discover_agents
+            original_profiles_by_id = governance._profiles_by_id
+            with patch.object(governance, "discover_agents") as mock_discover, patch.object(
+                governance, "_profiles_by_id"
+            ) as mock_profiles:
+                mock_discover.side_effect = original_discover_agents
+                mock_profiles.side_effect = original_profiles_by_id
+                self.assertEqual(verify_bindings(fixture_root), 269)
+            self.assertEqual(mock_discover.call_count, 1)
+            self.assertEqual(mock_profiles.call_count, 1)
+        finally:
+            directory.cleanup()
+
     def test_bind_sources_rolls_back_when_second_replace_fails(self):
         directory, fixture_root = self._isolated_repo_fixture()
         try:
@@ -546,6 +575,125 @@ class GovernanceContractTests(unittest.TestCase):
                 if candidate.is_file() and self._is_temp_bind_file(candidate)
             ]
             self.assertEqual(temp_files, [])
+        finally:
+            directory.cleanup()
+
+    def test_bind_sources_raises_rollback_failed_when_replace_and_rollback_fail(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            agents = discover_agents(fixture_root)
+            sources = sorted(fixture_root / agent.source_path for agent in agents)
+            targets = sources[:2]
+            target_roles = {
+                fixture_root / agent.source_path: agent.role_id for agent in agents
+                if fixture_root / agent.source_path in targets
+            }
+            for source in targets:
+                source.write_bytes(self._remove_governance_profile_line(source.read_bytes()))
+            before = {path.relative_to(fixture_root): path.read_bytes() for path in sources}
+
+            state = {"calls": 0}
+            original_replace = governance.os.replace
+
+            def flaky_replace(*args):
+                state["calls"] += 1
+                if state["calls"] in {2, 3}:
+                    raise OSError(
+                        "simulated replace failure on attempt {}".format(state["calls"])
+                    )
+                return original_replace(*args)
+
+            with patch.object(governance.os, "replace", side_effect=flaky_replace):
+                with self.assertRaisesRegex(GovernanceError, "ROLLBACK_FAILED"):
+                    bind_sources(fixture_root)
+
+            first_target, second_target = targets[0], targets[1]
+            first_after = first_target.read_bytes()
+            second_after = second_target.read_bytes()
+            _, opening_end, closing_start, _ = self._frontmatter_bounds(first_after)
+            first_lines = re.findall(
+                _GOVERNANCE_PROFILE_LINE,
+                first_after[opening_end:closing_start],
+            )
+            self.assertEqual(len(first_lines), 1)
+            first_binding = (
+                first_lines[0].split(b":", 1)[1]
+                .strip()
+                .strip(b'"')
+                .strip(b"'")
+            )
+            self.assertEqual(first_binding.decode("utf-8"), target_roles[first_target])
+
+            _, opening_end, closing_start, _ = self._frontmatter_bounds(second_after)
+            self.assertEqual(
+                re.findall(_GOVERNANCE_PROFILE_LINE, second_after[opening_end:closing_start]),
+                [],
+            )
+
+            for path in sources[2:]:
+                self.assertEqual(before[path.relative_to(fixture_root)], path.read_bytes())
+            temp_files = [
+                candidate
+                for candidate in fixture_root.rglob("**/*")
+                if candidate.is_file() and self._is_temp_bind_file(candidate)
+            ]
+            self.assertEqual(temp_files, [])
+        finally:
+            directory.cleanup()
+
+    def test_bind_sources_reports_cleanup_failure_as_binds_cleanup_error(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            agents = discover_agents(fixture_root)
+            sources = sorted(fixture_root / agent.source_path for agent in agents)
+            targets = sources[:2]
+            for source in targets:
+                source.write_bytes(self._remove_governance_profile_line(source.read_bytes()))
+            before = {path.relative_to(fixture_root): path.read_bytes() for path in sources}
+
+            original_replace = governance.os.replace
+            original_unlink = governance.os.unlink
+            replace_state = {"calls": 0}
+            unlink_state = {"calls": 0}
+
+            def flaky_replace(*args):
+                replace_state["calls"] += 1
+                if replace_state["calls"] == 2:
+                    raise OSError("simulated replace failure")
+                return original_replace(*args)
+
+            def flaky_unlink(path):
+                unlink_state["calls"] += 1
+                if unlink_state["calls"] == 1:
+                    raise OSError("simulated cleanup failure")
+                return original_unlink(path)
+
+            with patch.object(governance.os, "replace", side_effect=flaky_replace):
+                with patch.object(governance.os, "unlink", side_effect=flaky_unlink):
+                    with self.assertRaisesRegex(
+                        GovernanceError,
+                        "BIND_CLEANUP_FAILED",
+                    ):
+                        bind_sources(fixture_root)
+
+            for target in targets:
+                raw = target.read_bytes()
+                _, opening_end, closing_start, _ = self._frontmatter_bounds(raw)
+                self.assertEqual(
+                    re.findall(_GOVERNANCE_PROFILE_LINE, raw[opening_end:closing_start]),
+                    [],
+                )
+
+            for path in sources[2:]:
+                self.assertEqual(before[path.relative_to(fixture_root)], path.read_bytes())
+
+            temp_files = [
+                candidate
+                for candidate in fixture_root.rglob("**/*")
+                if candidate.is_file() and self._is_temp_bind_file(candidate)
+            ]
+            self.assertEqual(len(temp_files), 1)
+            self.assertEqual(replace_state["calls"], 3)
         finally:
             directory.cleanup()
 
