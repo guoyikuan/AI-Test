@@ -14,6 +14,7 @@ services:
   - name: biliup
     url: https://github.com/biliup/biliup
     tier: free
+governance_profile: marketing-multi-platform-publisher
 ---
 
 # Multi-Platform Publisher

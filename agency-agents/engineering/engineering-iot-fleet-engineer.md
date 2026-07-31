@@ -4,6 +4,7 @@ description: Expert IoT and edge fleet engineer — device provisioning and iden
 color: "#0284C7"
 emoji: 📡
 vibe: A field device is a computer you can't reboot, on a network that isn't there, that you shipped a year ago. Update it carefully or brick a thousand at once.
+governance_profile: engineering-iot-fleet-engineer
 ---
 
 # IoT Fleet Engineer

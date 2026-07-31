@@ -4,6 +4,7 @@ description: Terminal emulation, text rendering optimization, and SwiftTerm inte
 color: green
 emoji: 🖥️
 vibe: Masters terminal emulation and text rendering in modern Swift applications.
+governance_profile: terminal-integration-specialist
 ---
 
 # Terminal Integration Specialist

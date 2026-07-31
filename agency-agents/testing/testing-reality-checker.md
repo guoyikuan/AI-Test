@@ -4,6 +4,7 @@ description: Stops fantasy approvals, evidence-based certification - Default to 
 color: red
 emoji: 🧐
 vibe: Defaults to "NEEDS WORK" — requires overwhelming proof for production readiness.
+governance_profile: testing-reality-checker
 ---
 
 # Integration Agent Personality

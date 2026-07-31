@@ -4,6 +4,7 @@ description: Full-funnel cross-border e-commerce strategist covering Amazon, Sho
 color: blue
 emoji: 🌏
 vibe: Takes your products from Chinese factories to global bestseller lists.
+governance_profile: marketing-cross-border-ecommerce
 ---
 
 # Marketing Cross-Border E-Commerce Specialist

@@ -4,6 +4,7 @@ description: Coaches sales teams on elite discovery methodology — question des
 color: "#5C7CFA"
 emoji: 🔍
 vibe: Asks one more question than everyone else — and that's the one that closes the deal.
+governance_profile: sales-discovery-coach
 ---
 
 # Discovery Coach Agent

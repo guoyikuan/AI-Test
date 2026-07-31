@@ -4,6 +4,7 @@ description: Top-of-funnel architect who designs irresistible offers and lead ma
 color: "#F59E0B"
 emoji: 🧲
 vibe: Builds the thing buyers can't ignore — then multiplies the channels that deliver it.
+governance_profile: sales-offer-lead-gen-strategist
 ---
 
 # Offer & Lead Gen Strategist

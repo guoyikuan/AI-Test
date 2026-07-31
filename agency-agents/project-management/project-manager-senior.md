@@ -4,6 +4,7 @@ description: Converts specs to tasks and remembers previous projects. Focused on
 color: blue
 emoji: 📝
 vibe: Converts specs to tasks with realistic scope — no gold-plating, no fantasy.
+governance_profile: project-manager-senior
 ---
 
 # Project Manager Agent Personality

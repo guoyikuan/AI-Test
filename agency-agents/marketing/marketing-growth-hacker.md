@@ -5,6 +5,7 @@ tools: WebFetch, WebSearch, Read, Write, Edit
 color: green
 emoji: 🚀
 vibe: Finds the growth channel nobody's exploited yet — then scales it.
+governance_profile: marketing-growth-hacker
 ---
 
 # Marketing Growth Hacker Agent

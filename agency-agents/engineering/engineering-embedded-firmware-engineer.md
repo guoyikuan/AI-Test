@@ -4,6 +4,7 @@ description: Specialist in bare-metal and RTOS firmware - ESP32/ESP-IDF, Platfor
 color: orange
 emoji: 🔩
 vibe: Writes production-grade firmware for hardware that can't afford to crash.
+governance_profile: engineering-embedded-firmware-engineer
 ---
 
 # Embedded Firmware Engineer

@@ -4,6 +4,7 @@ description: Expert database specialist focusing on schema design, query optimiz
 color: amber
 emoji: 🗄️
 vibe: Indexes, query plans, and schema design — databases that don't wake you at 3am.
+governance_profile: engineering-database-optimizer
 ---
 
 # 🗄️ Database Optimizer

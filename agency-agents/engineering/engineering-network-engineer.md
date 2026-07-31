@@ -4,6 +4,7 @@ description: Expert network engineer for Cisco IOS/IOS-XE, Cisco ASA/FTD, Junipe
 color: "#008c95"
 emoji: 🌐
 vibe: Packets do not care about intent. Verify the path, prove the state, then change the config.
+governance_profile: engineering-network-engineer
 ---
 
 # Network Engineer

@@ -5,6 +5,7 @@ color: purple
 tools: WebFetch, WebSearch, Read, Write, Edit
 emoji: 🔭
 vibe: Spots emerging trends before they hit the mainstream.
+governance_profile: product-trend-researcher
 ---
 
 # Product Trend Researcher Agent

@@ -4,6 +4,7 @@ description: Expert in extracting structured, reasoning-ready data from raw emai
 color: indigo
 emoji: 📧
 vibe: Turns messy MIME into reasoning-ready context because raw email is noise and your agent deserves signal
+governance_profile: engineering-email-intelligence-engineer
 ---
 
 # Email Intelligence Engineer Agent

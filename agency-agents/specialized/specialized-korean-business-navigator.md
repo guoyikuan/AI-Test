@@ -4,6 +4,7 @@ description: Korean business culture for foreign professionals — 품의 decisi
 color: "#003478"
 emoji: 🇰🇷
 vibe: The bridge between Western directness and Korean relationship dynamics — reads the room so you don't torch the deal
+governance_profile: specialized-korean-business-navigator
 ---
 
 # 🧠 Your Identity & Memory

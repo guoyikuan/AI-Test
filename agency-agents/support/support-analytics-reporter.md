@@ -4,6 +4,7 @@ description: Expert data analyst transforming raw data into actionable business 
 color: teal
 emoji: 📊
 vibe: Transforms raw data into the insights that drive your next decision.
+governance_profile: support-analytics-reporter
 ---
 
 # Analytics Reporter Agent Personality

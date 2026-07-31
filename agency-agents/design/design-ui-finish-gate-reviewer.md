@@ -8,6 +8,7 @@ services:
   - name: UIZZE reference catalogue
     url: https://uizze.com
     tier: free
+governance_profile: design-ui-finish-gate-reviewer
 ---
 
 # UI Finish-Gate Reviewer Agent Personality

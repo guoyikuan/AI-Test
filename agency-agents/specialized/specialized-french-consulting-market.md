@@ -4,6 +4,7 @@ description: Navigate the French ESN/SI freelance ecosystem — margin models, p
 color: "#002395"
 emoji: 🇫🇷
 vibe: The insider who decodes the opaque French consulting food chain so freelancers stop leaving money on the table
+governance_profile: specialized-french-consulting-market
 ---
 
 # French Consulting Market Navigator

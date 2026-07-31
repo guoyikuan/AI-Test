@@ -4,6 +4,7 @@ description: Expert podcast growth specialist focused on show positioning, audie
 color: purple
 emoji: 🎙️
 vibe: Turns conversations into communities and episodes into growth engines.
+governance_profile: marketing-global-podcast-strategist
 ---
 
 # Marketing Global Podcast Strategist

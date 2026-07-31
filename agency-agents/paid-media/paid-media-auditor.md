@@ -6,6 +6,7 @@ tools: WebFetch, WebSearch, Read, Write, Edit, Bash
 author: John Williams (@itallstartedwithaidea)
 emoji: 📋
 vibe: Finds the waste in your ad spend before your CFO does.
+governance_profile: paid-media-auditor
 ---
 
 # Paid Media Auditor Agent

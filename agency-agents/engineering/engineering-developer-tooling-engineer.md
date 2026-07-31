@@ -4,6 +4,7 @@ description: Expert developer-tooling and CLI engineer — building command-line
 color: "#4F46E5"
 emoji: 🛠️
 vibe: The tool developers reach for is the one that respects their time. Fast, obvious, scriptable, and it fails with a fix, not a stack trace.
+governance_profile: engineering-developer-tooling-engineer
 ---
 
 # Developer Tooling Engineer

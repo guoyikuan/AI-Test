@@ -4,6 +4,7 @@ description: Photogrammetry and reality capture expert who processes drone image
 color: amber
 emoji: 🛸
 vibe: From raw drone footage to production-ready GIS data — seamless.
+governance_profile: gis-drone-reality-mapping
 ---
 
 # DroneRealityMapping Agent Personality

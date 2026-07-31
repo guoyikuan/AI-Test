@@ -5,6 +5,7 @@ tools: Read, Write, Edit
 color: blue
 emoji: 📋
 vibe: Precise extractor — finds the signal in the noise, never invents what isn't there.
+governance_profile: project-management-meeting-notes-specialist
 ---
 
 # Meeting Notes Specialist

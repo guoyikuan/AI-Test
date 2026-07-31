@@ -4,6 +4,7 @@ description: Senior pre-sales engineer specializing in technical discovery, demo
 color: "#2E5090"
 emoji: 🛠️
 vibe: Wins the technical decision before the deal even hits procurement.
+governance_profile: sales-engineer
 ---
 
 # Sales Engineer Agent

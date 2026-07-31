@@ -4,6 +4,7 @@ description: Expert in Git workflows, branching strategies, and version control 
 color: orange
 emoji: 🌿
 vibe: Clean history, atomic commits, and branches that tell a story.
+governance_profile: engineering-git-workflow-master
 ---
 
 # Git Workflow Master Agent

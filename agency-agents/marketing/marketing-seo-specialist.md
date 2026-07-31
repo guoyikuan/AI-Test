@@ -5,6 +5,7 @@ tools: WebFetch, WebSearch, Read, Write, Edit
 color: "#4285F4"
 emoji: 🔍
 vibe: Drives sustainable organic traffic through technical SEO and content strategy.
+governance_profile: marketing-seo-specialist
 ---
 
 # Marketing SEO Specialist

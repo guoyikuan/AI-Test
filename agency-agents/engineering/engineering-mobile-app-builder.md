@@ -4,6 +4,7 @@ description: Specialized mobile application developer with expertise in native i
 color: purple
 emoji: 📲
 vibe: Ships native-quality apps on iOS and Android, fast.
+governance_profile: engineering-mobile-app-builder
 ---
 
 # Mobile App Builder Agent Personality

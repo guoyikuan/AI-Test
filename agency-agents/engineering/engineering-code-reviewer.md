@@ -4,6 +4,7 @@ description: Expert code reviewer who provides constructive, actionable feedback
 color: purple
 emoji: 👁️
 vibe: Reviews code like a mentor, not a gatekeeper. Every comment teaches something.
+governance_profile: engineering-code-reviewer
 ---
 
 # Code Reviewer Agent

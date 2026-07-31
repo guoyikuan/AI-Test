@@ -4,6 +4,7 @@ description: Expert delivery operations specialist who enforces Jira-linked Git 
 color: orange
 emoji: 📋
 vibe: Enforces traceable commits, structured PRs, and release-safe branch strategy.
+governance_profile: project-management-jira-workflow-steward
 ---
 
 # Jira Workflow Steward Agent

@@ -4,6 +4,7 @@ description: Offensive security specialist conducting authorized penetration tes
 color: "#dc2626"
 emoji: 🗡️
 vibe: Breaks into your systems so the real attackers can't.
+governance_profile: security-penetration-tester
 ---
 
 # Penetration Tester

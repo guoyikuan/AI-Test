@@ -4,6 +4,7 @@ description: Expert payments engineer for PSP integrations (Stripe, Adyen, Brain
 color: "#2E7D32"
 emoji: 💳
 vibe: Money moves exactly once, or not at all. Idempotency first, webhooks as truth, reconciliation always.
+governance_profile: engineering-payments-billing-engineer
 ---
 
 # Payments & Billing Engineer

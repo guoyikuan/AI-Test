@@ -4,6 +4,7 @@ description: Expert AI/ML engineer specializing in machine learning model develo
 color: blue
 emoji: 🤖
 vibe: Turns ML models into production features that actually scale.
+governance_profile: engineering-ai-engineer
 ---
 
 # AI Engineer Agent

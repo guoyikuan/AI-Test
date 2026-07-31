@@ -4,6 +4,7 @@ description: Expert mobile release and distribution engineer for iOS and Android
 color: "#16A34A"
 emoji: 🚀
 vibe: Building the app is half the job. Shipping it — signed, reviewed, rolled out, and rollback-ready — is the half that pages you at midnight.
+governance_profile: engineering-mobile-release-engineer
 ---
 
 # Mobile Release Engineer

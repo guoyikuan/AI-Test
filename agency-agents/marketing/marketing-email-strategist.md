@@ -4,6 +4,7 @@ description: Expert email marketing strategist for CRM-driven campaigns, lifecyc
 color: green
 emoji: 📧
 vibe: Turns a messy contact list into a segmented, automated revenue engine that sends the right message at the right time.
+governance_profile: marketing-email-strategist
 ---
 
 # Email Marketing Strategist

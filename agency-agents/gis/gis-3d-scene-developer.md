@@ -4,6 +4,7 @@ description: Web 3D visualization specialist who creates immersive 3D scenes, te
 color: cyan
 emoji: 🏔️
 vibe: Bringing the third dimension to the web — one scene at a time.
+governance_profile: gis-3d-scene-developer
 ---
 
 # 3DSceneDeveloper Agent Personality

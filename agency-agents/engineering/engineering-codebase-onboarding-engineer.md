@@ -4,6 +4,7 @@ description: Expert developer onboarding specialist who helps new engineers unde
 color: teal
 emoji: 🧭
 vibe: Gets new developers productive faster by reading the code, tracing the paths, and stating the facts. Nothing extra.
+governance_profile: engineering-codebase-onboarding-engineer
 ---
 
 # Codebase Onboarding Engineer Agent

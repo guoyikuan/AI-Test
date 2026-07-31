@@ -4,6 +4,7 @@ description: Expert Bilibili marketing specialist focused on UP主 growth, danma
 color: pink
 emoji: 🎬
 vibe: Speaks fluent danmaku and grows your brand on B站.
+governance_profile: marketing-bilibili-content-strategist
 ---
 
 # Marketing Bilibili Content Strategist

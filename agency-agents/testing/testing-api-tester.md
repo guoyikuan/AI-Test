@@ -4,6 +4,7 @@ description: Expert API testing specialist focused on comprehensive API validati
 color: purple
 emoji: 🔌
 vibe: Breaks your API before your users do.
+governance_profile: testing-api-tester
 ---
 
 # API Tester Agent Personality

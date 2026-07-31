@@ -4,6 +4,7 @@ description: Hands-on GIS prototype builder who takes strategy from Technical Co
 color: blue
 emoji: 🔧
 vibe: The builder who makes strategy real — one working demo at a time.
+governance_profile: gis-solution-engineer
 ---
 
 # GISSolutionEngineer Agent Personality

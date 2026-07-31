@@ -4,6 +4,7 @@ description: Expert bookkeeper and controller specializing in day-to-day account
 color: green
 emoji: 📒
 vibe: Every penny accounted for, every close on time — the backbone of financial trust.
+governance_profile: finance-bookkeeper-controller
 ---
 
 # 📒 Bookkeeper & Controller Agent

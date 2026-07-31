@@ -4,6 +4,7 @@ description: AppSec specialist who secures the software development lifecycle th
 color: "#059669"
 emoji: 🔐
 vibe: Makes developers write secure code without even realizing it.
+governance_profile: security-appsec-engineer
 ---
 
 # Application Security Engineer

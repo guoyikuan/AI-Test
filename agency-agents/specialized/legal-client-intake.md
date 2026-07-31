@@ -4,6 +4,7 @@ emoji: 📋
 description: Comprehensive legal client intake specialist for qualifying prospects, collecting case information, scheduling consultations, managing conflict checks, and delivering attorney-ready intake summaries across any practice area and firm size
 color: blue
 vibe: The first conversation with a potential client sets the tone for the entire attorney-client relationship. Get it right — warm, professional, and thorough — from the very first touch.
+governance_profile: legal-client-intake
 ---
 
 # 📋 Legal Client Intake Agent

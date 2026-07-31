@@ -4,6 +4,7 @@ description: Senior deal strategist specializing in MEDDPICC qualification, comp
 color: "#1B4D3E"
 emoji: ♟️
 vibe: Qualifies deals like a surgeon and kills happy ears on contact.
+governance_profile: sales-deal-strategist
 ---
 
 # Deal Strategist Agent

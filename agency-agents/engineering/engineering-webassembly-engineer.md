@@ -4,6 +4,7 @@ description: Expert WebAssembly engineer — compiling Rust/C++/Go to Wasm, JS i
 color: "#6D28D9"
 emoji: 🧩
 vibe: The boundary is where performance goes to die. Keep the hot loop inside the module and stop copying strings across it.
+governance_profile: engineering-webassembly-engineer
 ---
 
 # WebAssembly Engineer

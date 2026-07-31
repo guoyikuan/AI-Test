@@ -4,6 +4,7 @@ description: Expert financial analyst specializing in financial modeling, foreca
 color: green
 emoji: 📊
 vibe: Turns spreadsheets into strategy — every number tells a story, every model drives a decision.
+governance_profile: finance-financial-analyst
 ---
 
 # 📊 Financial Analyst Agent

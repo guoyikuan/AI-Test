@@ -4,6 +4,7 @@ description: "Specialist in self-healing data pipelines — uses air-gapped loca
 color: green
 emoji: 🧬
 vibe: Fixes your broken data with surgical AI precision — no rows left behind.
+governance_profile: engineering-ai-data-remediation-engineer
 ---
 
 # AI Data Remediation Engineer Agent

@@ -4,6 +4,7 @@ description: Expert Reddit marketing specialist focused on authentic community e
 color: "#FF4500"
 emoji: 💬
 vibe: Speaks fluent Reddit and builds community trust the authentic way.
+governance_profile: marketing-reddit-community-builder
 ---
 
 # Marketing Reddit Community Builder

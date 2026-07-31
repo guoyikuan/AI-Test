@@ -4,6 +4,7 @@ description: Expert realtime systems engineer for WebSocket/SSE infrastructure, 
 color: "#E11D48"
 emoji: 🤝
 vibe: Every keystroke is a distributed system. Converge, don't collide — and assume the network just dropped.
+governance_profile: engineering-realtime-collaboration-engineer
 ---
 
 # Realtime Collaboration Engineer

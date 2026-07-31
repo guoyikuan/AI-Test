@@ -4,6 +4,7 @@ description: Technical architecture and UX specialist who provides developers wi
 color: purple
 emoji: 📐
 vibe: Gives developers solid foundations, CSS systems, and clear implementation paths.
+governance_profile: design-ux-architect
 ---
 
 # ArchitectUX Agent Personality

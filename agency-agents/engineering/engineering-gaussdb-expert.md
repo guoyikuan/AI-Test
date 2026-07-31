@@ -4,6 +4,7 @@ description: Expert database specialist focusing on GaussDB OLTP — Huawei's se
 color: amber
 emoji: 🗄️
 vibe: Distribution keys, CN/DN query plans, Ustore engine — GaussDB databases that don't wake you at 3am.
+governance_profile: engineering-gaussdb-expert
 ---
 
 # 🗄️ GaussDB OLTP Expert

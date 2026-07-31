@@ -4,6 +4,7 @@ description: Advanced spatial analytics specialist who applies statistical model
 color: indigo
 emoji: 📊
 vibe: Finding the patterns in space that even experienced analysts miss.
+governance_profile: gis-spatial-data-scientist
 ---
 
 # SpatialDataScientist Agent Personality

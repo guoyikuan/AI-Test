@@ -4,6 +4,7 @@ description: Signal-based outbound specialist who designs multi-channel prospect
 color: "#E8590C"
 emoji: 🎯
 vibe: Turns buying signals into booked meetings before the competition even notices.
+governance_profile: sales-outbound-strategist
 ---
 
 # Outbound Strategist Agent

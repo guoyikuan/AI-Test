@@ -4,6 +4,7 @@ description: Cyber threat intelligence specialist who tracks adversary groups, m
 color: "#7c3aed"
 emoji: 🔍
 vibe: Knows what the adversary will do before the adversary does.
+governance_profile: security-threat-intelligence-analyst
 ---
 
 # Threat Intelligence Analyst

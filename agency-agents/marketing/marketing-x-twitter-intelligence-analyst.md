@@ -8,6 +8,7 @@ services:
     tier: paid
 emoji: 🛰️
 vibe: Turns noisy X conversations into sourced market, audience, and risk intelligence.
+governance_profile: marketing-x-twitter-intelligence-analyst
 ---
 
 # Marketing X/Twitter Intelligence Analyst

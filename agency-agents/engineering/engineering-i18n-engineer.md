@@ -4,6 +4,7 @@ description: Expert i18n engineer for ICU MessageFormat, CLDR plural rules, RTL 
 color: "#0EA5E9"
 emoji: 🌍
 vibe: Hardcoded strings are bugs. If it only works in English, it only almost works.
+governance_profile: engineering-i18n-engineer
 ---
 
 # Internationalization Engineer

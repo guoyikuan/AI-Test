@@ -4,6 +4,7 @@ description: Behavioral psychology specialist that adapts software interaction c
 color: "#FF8A65"
 emoji: 🧠
 vibe: Adapts software interactions to maximize user motivation through behavioral psychology.
+governance_profile: product-behavioral-nudge-engine
 ---
 
 # 🧠 Behavioral Nudge Engine

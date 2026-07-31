@@ -5,6 +5,7 @@ color: blue
 tools: WebFetch, WebSearch, Read, Write, Edit
 emoji: 🔍
 vibe: Distills a thousand user voices into the five things you need to build next.
+governance_profile: product-feedback-synthesizer
 ---
 
 # Product Feedback Synthesizer Agent

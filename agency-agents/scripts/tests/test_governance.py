@@ -1,11 +1,20 @@
 import json
 import re
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
 from governance import load_schema, validate_profile, validate_response
-from scripts.governance import GovernanceError, build_profiles, discover_agents
+from scripts.governance import (
+    GovernanceError,
+    bind_sources,
+    build_profiles,
+    discover_agents,
+    read_agent,
+    render_governance,
+    render_governed_body,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -356,6 +365,166 @@ class GovernanceContractTests(unittest.TestCase):
         self.assertTrue(sensitive_profiles)
         for profile in sensitive_profiles:
             self.assertIn(profile["role_id"], override_ids)
+
+    def test_every_source_has_exact_profile_binding(self):
+        agents = discover_agents(ROOT)
+
+        self.assertEqual(len(agents), 269)
+        for agent in agents:
+            fields, _ = read_agent(ROOT / agent.source_path)
+            self.assertEqual(
+                fields.get("governance_profile"),
+                agent.role_id,
+                agent.source_path,
+            )
+
+    def test_renderer_resolves_every_source_without_unresolved_variables(self):
+        agents = discover_agents(ROOT)
+
+        self.assertEqual(len(agents), 269)
+        for agent in agents:
+            source = ROOT / agent.source_path
+            rendered = render_governance(ROOT, source)
+            self.assertNotRegex(
+                rendered,
+                r"\{\{[^{}\r\n]+\}\}",
+                agent.source_path,
+            )
+
+    def test_rendered_body_preserves_persona_text_and_fixed_decision_contract(self):
+        agents = discover_agents(ROOT)
+        governance_variables = (
+            "ROLE_NAME",
+            "ALLOWED_READ_ACTIONS",
+            "ALLOWED_WRITE_ACTIONS",
+            "FORBIDDEN_ACTIONS",
+            "RISK_RULES",
+            "APPROVAL_MATRIX",
+            "ALLOWED_SYSTEMS",
+        )
+
+        for agent in agents:
+            source = ROOT / agent.source_path
+            _, original_body = read_agent(source)
+            rendered = render_governed_body(ROOT, source)
+
+            self.assertIn(original_body, rendered, agent.source_path)
+            self.assertIn('"decision":"ALLOW|NEED_APPROVAL|BLOCK"', rendered)
+            for variable in governance_variables:
+                self.assertNotIn(
+                    f"{{{{{variable}}}}}",
+                    rendered,
+                    agent.source_path,
+                )
+
+    def _isolated_repo_fixture(self):
+        directory = tempfile.TemporaryDirectory()
+        root = Path(directory.name) / "agency-agents"
+        shutil.copytree(
+            ROOT,
+            root,
+            symlinks=True,
+            ignore=shutil.ignore_patterns(".git", ".superpowers", "__pycache__"),
+        )
+        return directory, root
+
+    @staticmethod
+    def _body_bytes(raw):
+        fences = list(re.finditer(br"(?m)^---[ \t]*\r?\n", raw))
+        if len(fences) < 2:
+            raise AssertionError("source does not contain a complete frontmatter block")
+        return raw[fences[1].end():]
+
+    def test_binding_preserves_body_bytes_and_is_atomic_idempotent(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            sources = sorted(
+                fixture_root / agent.source_path
+                for agent in discover_agents(fixture_root)
+            )
+            before = {path.relative_to(fixture_root): path.read_bytes() for path in sources}
+
+            first_count = bind_sources(fixture_root)
+            first_state = {
+                path.relative_to(fixture_root): path.read_bytes()
+                for path in sources
+            }
+            second_count = bind_sources(fixture_root)
+            second_state = {
+                path.relative_to(fixture_root): path.read_bytes()
+                for path in sources
+            }
+
+            self.assertEqual(first_count, 0)
+            self.assertEqual(second_count, 0)
+            self.assertEqual(first_state, second_state)
+            for relative_path, original in before.items():
+                self.assertEqual(
+                    self._body_bytes(original),
+                    self._body_bytes(first_state[relative_path]),
+                    str(relative_path),
+                )
+        finally:
+            directory.cleanup()
+
+    def test_utf8_frontmatter_and_body_survive_binding_and_rendering(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            agent = discover_agents(fixture_root)[0]
+            source = fixture_root / agent.source_path
+            raw = source.read_bytes()
+            opening = re.match(br"\A---[ \t]*\r?\n", raw)
+            self.assertIsNotNone(opening)
+            closing = re.search(br"(?m)^---[ \t]*\r?\n", raw[opening.end():])
+            self.assertIsNotNone(closing)
+            unicode_frontmatter = (
+                "---\n"
+                "name: 中文角色 😀\n"
+                "authority: 负责中文与 emoji 解析 🧪\n"
+                "description: 保留多字节前言\n"
+                "---\n"
+            ).encode("utf-8")
+            original_body = (
+                "\n# 中文主体 😀\n\n必须逐字保留：中文、emoji 🧪、多字节文本。\n"
+            ).encode("utf-8")
+            source.write_bytes(unicode_frontmatter + original_body)
+
+            discovered = next(
+                candidate
+                for candidate in discover_agents(fixture_root)
+                if candidate.source_path == agent.source_path
+            )
+            self.assertIn("中文与 emoji 解析 🧪", discovered.authority)
+            self.assertEqual(read_agent(source)[1], original_body.decode("utf-8"))
+
+            self.assertEqual(bind_sources(fixture_root), 1)
+            bound = source.read_bytes()
+            self.assertEqual(self._body_bytes(bound), original_body)
+            rendered = render_governed_body(fixture_root, source)
+            self.assertTrue(rendered.endswith(original_body.decode("utf-8")))
+            self.assertIn("中文主体 😀", rendered)
+        finally:
+            directory.cleanup()
+
+    def test_binding_rejects_symlinked_sources_without_partial_write(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            target = next(
+                path
+                for path in (fixture_root / "engineering").glob("*.md")
+                if path.is_file() and not path.is_symlink()
+            )
+            original_target = target.read_bytes()
+            link = target.with_name("task3-symlink-agent.md")
+            link.symlink_to(target.name)
+
+            with self.assertRaisesRegex(GovernanceError, "SYMLINK"):
+                bind_sources(fixture_root)
+
+            self.assertEqual(target.read_bytes(), original_target)
+            self.assertFalse(link.is_file() and not link.is_symlink())
+        finally:
+            directory.cleanup()
 
 
 if __name__ == "__main__":

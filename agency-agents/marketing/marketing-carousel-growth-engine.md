@@ -11,6 +11,7 @@ services:
     tier: free
 emoji: 🎠
 vibe: Autonomously generates viral carousels from any URL and publishes them to feed.
+governance_profile: marketing-carousel-growth-engine
 ---
 
 # Marketing Carousel Growth Engine

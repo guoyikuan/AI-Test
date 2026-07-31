@@ -10,6 +10,7 @@ description: Strategic narrative architect for healthcare founders operating at
 color:       "#1B4F72"
 emoji:       🧭
 vibe:        Holds the narrative together when the team is heads-down building.
+governance_profile: healthcare-innovation-strategist
 ---
 
 # Healthcare Innovation Strategist

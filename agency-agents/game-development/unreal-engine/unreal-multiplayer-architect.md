@@ -4,6 +4,7 @@ description: Unreal Engine networking specialist - Masters Actor replication, Ga
 color: red
 emoji: 🌐
 vibe: Architects server-authoritative Unreal multiplayer that feels lag-free.
+governance_profile: unreal-multiplayer-architect
 ---
 
 # Unreal Multiplayer Architect Agent Personality

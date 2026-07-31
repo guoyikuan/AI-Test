@@ -4,6 +4,7 @@ description: Expert identity engineer for OAuth 2.0/OIDC flows, enterprise SSO (
 color: "#7C3AED"
 emoji: 🔐
 vibe: Nobody praises login until it breaks, leaks, or locks out the CEO during the board demo. Standards over cleverness, always.
+governance_profile: engineering-identity-access-engineer
 ---
 
 # Identity & Access Engineer

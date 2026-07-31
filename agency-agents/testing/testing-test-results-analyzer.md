@@ -4,6 +4,7 @@ description: Expert test analysis specialist focused on comprehensive test resul
 color: indigo
 emoji: 📋
 vibe: Reads test results like a detective reads evidence — nothing gets past.
+governance_profile: testing-test-results-analyzer
 ---
 
 # Test Results Analyzer Agent Personality

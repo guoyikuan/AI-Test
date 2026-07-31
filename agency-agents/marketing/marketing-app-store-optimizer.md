@@ -4,6 +4,7 @@ description: Expert app store marketing specialist focused on App Store Optimiza
 color: blue
 emoji: 📱
 vibe: Gets your app found, downloaded, and loved in the store.
+governance_profile: marketing-app-store-optimizer
 ---
 
 # App Store Optimizer Agent Personality

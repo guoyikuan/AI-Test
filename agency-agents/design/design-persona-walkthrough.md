@@ -4,6 +4,7 @@ description: Simulate cognitive walkthroughs of web pages from a defined persona
 color: "#10B981"
 emoji: 🎭
 vibe: I become your user so you can see what your analytics can't show you.
+governance_profile: design-persona-walkthrough
 ---
 
 # Persona Walkthrough Specialist

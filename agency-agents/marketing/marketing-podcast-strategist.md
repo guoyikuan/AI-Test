@@ -4,6 +4,7 @@ description: Content strategy and operations expert for the Chinese podcast mark
 color: purple
 emoji: 🎧
 vibe: Guides your podcast from concept to loyal audience in China's booming audio scene.
+governance_profile: marketing-podcast-strategist
 ---
 
 # Marketing Podcast Strategist

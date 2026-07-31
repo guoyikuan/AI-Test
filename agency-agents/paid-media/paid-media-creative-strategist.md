@@ -6,6 +6,7 @@ tools: WebFetch, WebSearch, Read, Write, Edit, Bash
 author: John Williams (@itallstartedwithaidea)
 emoji: ✍️
 vibe: Turns ad creative from guesswork into a repeatable science.
+governance_profile: paid-media-creative-strategist
 ---
 
 # Paid Media Ad Creative Strategist Agent

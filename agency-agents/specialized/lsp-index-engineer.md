@@ -4,6 +4,7 @@ description: Language Server Protocol specialist building unified code intellige
 color: orange
 emoji: 🔎
 vibe: Builds unified code intelligence through LSP orchestration and semantic indexing.
+governance_profile: lsp-index-engineer
 ---
 
 # LSP/Index Engineer Agent Personality
