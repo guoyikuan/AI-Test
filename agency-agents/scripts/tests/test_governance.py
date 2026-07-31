@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from governance import load_schema, validate_profile, validate_response
+from scripts.governance import build_profiles
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,9 +24,11 @@ class GovernanceContractTests(unittest.TestCase):
             "risk_rules": ["human_approval_for_high_risk"],
             "allowed_systems": ["codex"],
             "approval_matrix": {
-                "low": [],
-                "medium": ["human_review"],
-                "high": ["explicit_human_approval"],
+                "low": "self-service",
+                "medium": "current-user-approval",
+                "high": "current-user-and-supervisor",
+                "write": "current-user-and-supervisor",
+                "external_side_effect": "current-user-and-supervisor",
             },
             "source_hash": "a" * 64,
             "policy_source": "governance/policies/engineering.json",
@@ -216,6 +219,85 @@ class GovernanceContractTests(unittest.TestCase):
         for name in ("unknown", "../role-governance-profile", "role-governance-profile.json"):
             with self.assertRaises(ValueError):
                 load_schema(name)
+
+    def test_profiles_cover_exactly_all_discovered_agents(self):
+        profiles = build_profiles(ROOT)
+        role_ids = [profile["role_id"] for profile in profiles]
+        expected_divisions = set(
+            json.loads((ROOT / "divisions.json").read_text())["divisions"]
+        )
+
+        self.assertEqual(len(expected_divisions), 17)
+        self.assertEqual(len(profiles), 269)
+        self.assertEqual(len(set(role_ids)), 269)
+        self.assertEqual(
+            {profile["division"] for profile in profiles}, expected_divisions
+        )
+
+    def test_high_risk_profiles_have_no_unapproved_write_default(self):
+        profiles = build_profiles(ROOT)
+        high_risk_profiles = [
+            profile for profile in profiles if profile["risk_level"] == "high"
+        ]
+
+        self.assertTrue(high_risk_profiles)
+        for profile in high_risk_profiles:
+            self.assertEqual(profile["allowed_write_actions"], [])
+            self.assertEqual(
+                profile["approval_matrix"]["write"],
+                "current-user-and-supervisor",
+            )
+            self.assertEqual(
+                profile["approval_matrix"]["external_side_effect"],
+                "current-user-and-supervisor",
+            )
+
+    def test_profile_order_and_source_hashes_are_deterministic(self):
+        first = build_profiles(ROOT)
+        second = build_profiles(ROOT)
+
+        self.assertEqual(first, second)
+        self.assertEqual(
+            [profile["role_id"] for profile in first],
+            sorted(profile["role_id"] for profile in first),
+        )
+        for profile in first:
+            self.assertRegex(profile["source_hash"], r"^[0-9a-f]{64}$")
+
+    def test_sensitive_title_or_authority_roles_have_explicit_overrides(self):
+        profiles = build_profiles(ROOT)
+        overrides = json.loads(
+            (GOVERNANCE_ROOT / "role-overrides.json").read_text()
+        )
+        override_ids = set(overrides)
+        sensitive_terms = (
+            "security",
+            "finance",
+            "financial",
+            "legal",
+            "compliance",
+            "production",
+            "release",
+            "permission",
+            "external",
+            "call",
+            "telephony",
+        )
+
+        sensitive_profiles = []
+        for profile in profiles:
+            authority = json.dumps(
+                profile.get("authority", ""), ensure_ascii=False
+            ).lower()
+            title_or_authority = " ".join(
+                (profile["role_name"].lower(), authority)
+            )
+            if any(term in title_or_authority for term in sensitive_terms):
+                sensitive_profiles.append(profile)
+
+        self.assertTrue(sensitive_profiles)
+        for profile in sensitive_profiles:
+            self.assertIn(profile["role_id"], override_ids)
 
 
 if __name__ == "__main__":

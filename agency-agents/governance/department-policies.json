@@ -1,0 +1,395 @@
+{
+  "departments": {
+    "academic": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "low",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "design": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "low",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "engineering": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "read_local_repository",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "authorized_development_api",
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_authorized_branch",
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "finance": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [],
+      "forbidden_actions": [
+        "external_send",
+        "production_change",
+        "sensitive_data_write"
+      ],
+      "risk_level": "high",
+      "risk_rules": [
+        "current_user_and_supervisor_for_write",
+        "default_deny",
+        "log_every_action"
+      ]
+    },
+    "game-development": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "gis": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "healthcare": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [],
+      "forbidden_actions": [
+        "external_send",
+        "production_change",
+        "sensitive_data_write"
+      ],
+      "risk_level": "high",
+      "risk_rules": [
+        "current_user_and_supervisor_for_write",
+        "default_deny",
+        "log_every_action"
+      ]
+    },
+    "marketing": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "paid-media": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "product": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "project-management": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "sales": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "security": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [],
+      "forbidden_actions": [
+        "external_send",
+        "production_change",
+        "sensitive_data_write"
+      ],
+      "risk_level": "high",
+      "risk_rules": [
+        "current_user_and_supervisor_for_write",
+        "default_deny",
+        "log_every_action"
+      ]
+    },
+    "spatial-computing": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "specialized": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "support": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    },
+    "testing": {
+      "allowed_read_actions": [
+        "read_authorized_inputs",
+        "read_local_repository",
+        "analyze_local_content"
+      ],
+      "allowed_systems": [
+        "authorized_development_api",
+        "local_workspace"
+      ],
+      "allowed_write_actions": [
+        "write_authorized_branch",
+        "write_local_draft"
+      ],
+      "forbidden_actions": [
+        "production_change",
+        "external_send",
+        "sensitive_data_write"
+      ],
+      "risk_level": "medium",
+      "risk_rules": [
+        "default_deny",
+        "log_every_action",
+        "human_approval_for_high_risk"
+      ]
+    }
+  }
+}

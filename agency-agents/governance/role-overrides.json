@@ -1,0 +1,214 @@
+{
+  "accounts-payable-agent": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "agentic-identity-trust": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "automation-governance-architect": {
+    "reason": "production_operations",
+    "risk_level": "high"
+  },
+  "chief-financial-officer": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "data-privacy-officer": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "engineering-devops-automator": {
+    "reason": "production_operations",
+    "risk_level": "high"
+  },
+  "engineering-identity-access-engineer": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "engineering-incident-response-commander": {
+    "reason": "production_operations",
+    "risk_level": "high"
+  },
+  "engineering-mobile-release-engineer": {
+    "reason": "release",
+    "risk_level": "high"
+  },
+  "engineering-payments-billing-engineer": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "engineering-sre": {
+    "reason": "production_operations",
+    "risk_level": "high"
+  },
+  "engineering-voice-ai-integration-engineer": {
+    "reason": "real_calls",
+    "risk_level": "high"
+  },
+  "finance-bookkeeper-controller": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "finance-financial-analyst": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "finance-fpa-analyst": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "finance-investment-researcher": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "finance-tax-strategist": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "healthcare-customer-service": {
+    "reason": "real_calls",
+    "risk_level": "high"
+  },
+  "healthcare-marketing-compliance": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "identity-graph-operator": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "legal-billing-time-tracking": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "legal-client-intake": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "legal-document-review": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "marketing-email-strategist": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "marketing-multi-platform-publisher": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "marketing-pr-communications-manager": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "marketing-social-media-strategist": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-account-strategist": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-coach": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-deal-strategist": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "sales-discovery-coach": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-engineer": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-offer-lead-gen-strategist": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-outbound-strategist": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-pipeline-analyst": {
+    "reason": "external_sending",
+    "risk_level": "high"
+  },
+  "sales-proposal-strategist": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "security-ai-generated-code-auditor": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-appsec-engineer": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-architect": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-blockchain-security-auditor": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-cloud-security-architect": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-compliance-auditor": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "security-incident-responder": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-penetration-tester": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-secrets-credential-engineer": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-senior-secops": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-threat-detection-engineer": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "security-threat-intelligence-analyst": {
+    "reason": "security_administration",
+    "risk_level": "high"
+  },
+  "specialized-customer-service": {
+    "reason": "real_calls",
+    "risk_level": "high"
+  },
+  "specialized-fedramp-rmf-compliance": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "support-finance-tracker": {
+    "reason": "finance_commitment",
+    "risk_level": "high"
+  },
+  "support-legal-compliance-checker": {
+    "reason": "legal_compliance",
+    "risk_level": "high"
+  },
+  "support-support-responder": {
+    "reason": "real_calls",
+    "risk_level": "high"
+  }
+}

@@ -1,9 +1,117 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "actionList": {
+      "items": {
+        "maxLength": 500,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 100,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "approvalDecision": {
+      "enum": [
+        "self-service",
+        "current-user-approval",
+        "current-user-and-supervisor"
+      ],
+      "type": "string"
+    }
+  },
   "$id": "https://agency-agents.local/governance/schemas/role-governance-profile.schema.json",
-  "title": "Agency Agents Role Governance Profile",
-  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "properties": {
+    "allowed_read_actions": {
+      "$ref": "#/$defs/actionList",
+      "type": "array"
+    },
+    "allowed_systems": {
+      "$ref": "#/$defs/actionList",
+      "type": "array"
+    },
+    "allowed_write_actions": {
+      "$ref": "#/$defs/actionList",
+      "type": "array"
+    },
+    "approval_matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "external_side_effect": {
+          "$ref": "#/$defs/approvalDecision"
+        },
+        "high": {
+          "$ref": "#/$defs/approvalDecision"
+        },
+        "low": {
+          "$ref": "#/$defs/approvalDecision"
+        },
+        "medium": {
+          "$ref": "#/$defs/approvalDecision"
+        },
+        "write": {
+          "$ref": "#/$defs/approvalDecision"
+        }
+      },
+      "required": [
+        "low",
+        "medium",
+        "high",
+        "write",
+        "external_side_effect"
+      ],
+      "type": "object"
+    },
+    "division": {
+      "maxLength": 100,
+      "minLength": 1,
+      "type": "string"
+    },
+    "exception_source": {
+      "maxLength": 500,
+      "minLength": 1,
+      "type": "string"
+    },
+    "forbidden_actions": {
+      "$ref": "#/$defs/actionList",
+      "type": "array"
+    },
+    "policy_source": {
+      "maxLength": 500,
+      "minLength": 1,
+      "type": "string"
+    },
+    "risk_level": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "risk_rules": {
+      "$ref": "#/$defs/actionList",
+      "type": "array"
+    },
+    "role_id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "role_name": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+    },
+    "source_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "source_path": {
+      "pattern": "^[a-z0-9][a-z0-9._/-]{0,499}$",
+      "type": "string"
+    }
+  },
   "required": [
     "role_id",
     "role_name",
@@ -19,65 +127,6 @@
     "policy_source",
     "exception_source"
   ],
-  "properties": {
-    "role_id": {
-      "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
-    },
-    "role_name": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 200
-    },
-    "division": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 100
-    },
-    "risk_level": {
-      "type": "string",
-      "enum": ["low", "medium", "high"]
-    },
-    "allowed_read_actions": {"type": "array", "$ref": "#/$defs/actionList"},
-    "allowed_write_actions": {"type": "array", "$ref": "#/$defs/actionList"},
-    "forbidden_actions": {"type": "array", "$ref": "#/$defs/actionList"},
-    "risk_rules": {"type": "array", "$ref": "#/$defs/actionList"},
-    "allowed_systems": {"type": "array", "$ref": "#/$defs/actionList"},
-    "approval_matrix": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["low", "medium", "high"],
-      "properties": {
-        "low": {"$ref": "#/$defs/actionList"},
-        "medium": {"$ref": "#/$defs/actionList"},
-        "high": {"$ref": "#/$defs/actionList"}
-      }
-    },
-    "source_hash": {
-      "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
-    },
-    "policy_source": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 500
-    },
-    "exception_source": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 500
-    }
-  },
-  "$defs": {
-    "actionList": {
-      "type": "array",
-      "maxItems": 100,
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 500
-      }
-    }
-  }
+  "title": "Agency Agents Role Governance Profile",
+  "type": "object"
 }
