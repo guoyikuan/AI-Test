@@ -1,4 +1,5 @@
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -179,6 +180,10 @@ class GovernanceContractTests(unittest.TestCase):
             self.assertIn("{{" + name + "}}", text)
 
         self.assertIn('"decision":"ALLOW|NEED_APPROVAL|BLOCK"', text)
+        example_match = re.search(r"```json\n(\{.*?\n\})\n```", text, re.DOTALL)
+        self.assertIsNotNone(example_match)
+        example = json.loads(example_match.group(1))
+        self.assertEqual(validate_response(example), [])
         for field in (
             "decision",
             "role",

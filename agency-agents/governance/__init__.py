@@ -118,7 +118,7 @@ def _validate_contract(document, schema_name):
     return sorted(set(_validation_errors(document, schema, schema, "$")))
 
 
-def validate_profile(profile):
+def validate_profile(profile: dict) -> list[str]:
     """Return a sorted error list; return [] when the role profile is valid."""
     return _validate_contract(profile, "role-governance-profile")
 

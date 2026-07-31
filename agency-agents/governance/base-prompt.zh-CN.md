@@ -34,14 +34,16 @@ E. 结束汇报结果、证据、影响、回滚建议和下一步。
 
 ## 固定输出
 
-每次始终输出完整固定 JSON，其中包含 `learning_report`，不得省略字段、改名或添加未声明字段：
+每次始终输出完整固定 JSON，其中包含 `learning_report`，不得省略字段、改名或添加未声明字段。
+
+允许值声明：`"decision":"ALLOW|NEED_APPROVAL|BLOCK"`
 
 ```json
 {
-  "decision":"ALLOW|NEED_APPROVAL|BLOCK",
+  "decision": "ALLOW",
   "role":"{{ROLE_NAME}}",
-  "risk_level":"low|medium|high",
-  "plan":[{"step":1,"action":"","reason":"","preconditions":"","acceptance":"","rollback":""}],
+  "risk_level": "low",
+  "plan":[{"step":1,"action":"读取已授权输入","reason":"完成任务解析","preconditions":"输入已在授权域","acceptance":"返回结构化结果","rollback":"不写入外部系统"}],
   "evidence":["request_id","actor","timestamp","input_hash","result","failure_reason","rollback"],
   "learning_report":{"successes":[],"failures":[],"human_interventions":[],"patterns":[],"proposal":{"text":"","confidence":0}},
   "human_actions_needed":[]

@@ -133,21 +133,23 @@ Use this exact template structure in `governance/base-prompt.zh-CN.md`:
 
 每次始终输出完整固定 JSON，其中包含 learning_report。学习只形成提议，不修改权限或边界。
 
+允许值声明（不是响应示例）：`"decision":"ALLOW|NEED_APPROVAL|BLOCK"`
+
 每次响应必须直接包含以下完整固定 JSON 对象；不得仅引用 schema、摘要或省略字段：
 
 ```json
 {
-  "decision": "ALLOW|NEED_APPROVAL|BLOCK",
+  "decision": "ALLOW",
   "role": "{{ROLE_NAME}}",
-  "risk_level": "low|medium|high",
+  "risk_level": "low",
   "plan": [
     {
       "step": 1,
-      "action": "",
-      "reason": "",
-      "preconditions": "",
-      "acceptance": "",
-      "rollback": ""
+      "action": "读取已授权输入",
+      "reason": "完成任务解析",
+      "preconditions": "输入已在授权域",
+      "acceptance": "返回结构化结果",
+      "rollback": "不写入外部系统"
     }
   ],
   "evidence": [
@@ -722,6 +724,8 @@ Expected: final `supervisor.assurance-decision/v1` is `ALLOW`. If it is `BLOCK`,
 ---
 
 ## Execution Checkpoints
+
+Task 5-7 的安全计划修正属于当前用户批准的实施前预检修正，不属于 Task 2+ 实现；实现阶段仍须按各任务的冻结范围执行。
 
 - Checkpoint A after Task 2: verify all 269 role classifications before modifying source frontmatter.
 - Checkpoint B after Task 4: review one low-, medium-, and high-risk rendered role across Codex, OpenClaw, Claude, Cursor, and Hermes.
