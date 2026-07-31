@@ -73,9 +73,34 @@ _GOVERNANCE_VARIABLES = (
 _FRONTMATTER_OPEN = re.compile(br'\A---[ \t]*\r?\n')
 _FRONTMATTER_CLOSE = re.compile(br'(?m)^---[ \t]*\r?\n')
 _GOVERNANCE_PROFILE_LINE = re.compile(
-    br'(?m)^governance_profile:[^\r\n]*(\r?\n)'
+    br'(?m)^governance_profile:[^\r\n]*(?:\r?\n|$)'
 )
 _MUSTACHE_TOKEN = re.compile(r'\{\{[^{}\r\n]+\}\}')
+_BINDING_TMP_PREFIX = '.governance-bind-'
+
+
+def _frontmatter_profile_lines(frontmatter: bytes, path: Path) -> list[bytes]:
+    return _GOVERNANCE_PROFILE_LINE.findall(frontmatter)
+
+
+def _frontmatter_payload_without_governance(source: Path, content: bytes) -> bytes:
+    start, body_start = _frontmatter_bounds(content, source)
+    frontmatter = content[start:body_start]
+    matches = list(_GOVERNANCE_PROFILE_LINE.finditer(frontmatter))
+    if len(matches) > 1:
+        raise GovernanceError('DUPLICATE_GOVERNANCE_PROFILE:{}'.format(source))
+    if not matches:
+        return content
+    match = matches[0]
+    return (
+        content[:start] + frontmatter[:match.start()] + frontmatter[match.end():] + content[body_start:]
+    )
+
+
+def stable_source_hash(path: Path) -> str:
+    content = path.read_bytes()
+    payload = _frontmatter_payload_without_governance(path, content)
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _frontmatter_bounds(content: bytes, path: Path) -> tuple[int, int]:
@@ -191,7 +216,7 @@ def parse_frontmatter_agent(path: Path, repo_root: Path) -> Agent | None:
         name,
         source_path.split('/', 1)[0],
         source_path,
-        hashlib.sha256(content).hexdigest(),
+        stable_source_hash(path),
         authority,
     )
 
@@ -301,8 +326,21 @@ def _bound_profile(repo_root: Path, source: Path) -> tuple[dict[str, Any], str]:
     agent = agents.get(relative)
     if agent is None:
         raise GovernanceError('UNKNOWN_AGENT_SOURCE:{}'.format(relative))
-    fields, _ = read_agent(source)
-    binding = fields.get('governance_profile')
+    raw = source.read_bytes()
+    start, body_start = _frontmatter_bounds(raw, source)
+    frontmatter = raw[start:body_start]
+    matches = _frontmatter_profile_lines(frontmatter, source)
+    if len(matches) > 1:
+        raise GovernanceError('DUPLICATE_GOVERNANCE_PROFILE:{}'.format(relative))
+    if not matches:
+        raise GovernanceError('MISSING_GOVERNANCE_BINDING:{}'.format(relative))
+    binding = (
+        matches[0].split(b':', 1)[1]
+        .decode('utf-8')
+        .strip()
+        .strip('"')
+        .strip("'")
+    )
     if not binding:
         raise GovernanceError('MISSING_GOVERNANCE_BINDING:{}'.format(relative))
     if binding != agent.role_id:
@@ -312,6 +350,8 @@ def _bound_profile(repo_root: Path, source: Path) -> tuple[dict[str, Any], str]:
         raise GovernanceError('MISSING_GOVERNANCE_PROFILE:{}'.format(binding))
     if profile.get('source_path') != relative:
         raise GovernanceError('MISMATCHED_PROFILE_SOURCE:{}'.format(relative))
+    if profile.get('source_hash') != stable_source_hash(source):
+        raise GovernanceError('SOURCE_HASH_MISMATCH:{}'.format(relative))
     return profile, relative
 
 
@@ -381,15 +421,24 @@ def _bound_source_bytes(path: Path, role_id: str) -> bytes:
     closing = _FRONTMATTER_CLOSE.search(raw, start)
     assert closing is not None
     frontmatter = raw[start:closing.start()]
-    matches = list(_GOVERNANCE_PROFILE_LINE.finditer(frontmatter))
-    if len(matches) > 1:
-        raise GovernanceError('DUPLICATE_GOVERNANCE_BINDING:{}'.format(path))
+    match_list = list(_GOVERNANCE_PROFILE_LINE.finditer(frontmatter))
+    if len(match_list) > 1:
+        raise GovernanceError('DUPLICATE_GOVERNANCE_PROFILE:{}'.format(path))
+    if len(match_list) == 1:
+        match = match_list[0]
+        current = (
+            match.group(0).split(b':', 1)[1]
+            .decode('utf-8')
+            .strip()
+            .strip('"')
+            .strip("'")
+        )
+        if current == role_id:
+            return raw
     newline = b'\r\n' if b'\r\n' in raw[:closing.end()] else b'\n'
     replacement = b'governance_profile: ' + role_id.encode('utf-8') + newline
-    if matches:
-        match = matches[0]
-        if frontmatter[match.start():match.end()] == replacement:
-            return raw
+    if match_list:
+        match = match_list[0]
         updated_frontmatter = (
             frontmatter[:match.start()] + replacement + frontmatter[match.end():]
         )
@@ -397,21 +446,50 @@ def _bound_source_bytes(path: Path, role_id: str) -> bytes:
     return raw[:closing.start()] + replacement + raw[closing.start():]
 
 
-def _atomic_replace(path: Path, content: bytes) -> None:
+def _write_staged_file(path: Path, replacement: bytes) -> tuple[Path, int]:
+    mode = path.stat().st_mode & 0o777
     descriptor, temporary_name = tempfile.mkstemp(
-        prefix='.' + path.name + '.', suffix='.tmp', dir=str(path.parent)
+        prefix=_BINDING_TMP_PREFIX + path.name + '.', suffix='.tmp', dir=str(path.parent)
     )
     temporary = Path(temporary_name)
     try:
         with os.fdopen(descriptor, 'wb') as handle:
-            handle.write(content)
+            handle.write(replacement)
             handle.flush()
             os.fsync(handle.fileno())
-        os.chmod(temporary, path.stat().st_mode & 0o777)
-        os.replace(temporary, path)
+            os.fchmod(handle.fileno(), mode)
     except OSError as error:
         temporary.unlink(missing_ok=True)
-        raise GovernanceError('ATOMIC_SOURCE_REPLACE_FAILED:{}'.format(path)) from error
+        raise GovernanceError('ATOMIC_WRITE_PREPARE_FAILED:{}'.format(path)) from error
+    return temporary, mode
+
+
+def _replace_from_temp(temporary: Path, destination: Path) -> None:
+    try:
+        os.replace(temporary, destination)
+    except OSError as error:
+        raise GovernanceError('ATOMIC_SOURCE_REPLACE_FAILED:{}'.format(destination)) from error
+
+
+def _rollback_to_original(
+    destination: Path,
+    original: bytes,
+    mode: int,
+) -> None:
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=_BINDING_TMP_PREFIX + destination.name + '.', suffix='.tmp', dir=str(destination.parent)
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, 'wb') as handle:
+            handle.write(original)
+            handle.flush()
+            os.fsync(handle.fileno())
+            os.fchmod(handle.fileno(), mode)
+        _replace_from_temp(temporary, destination)
+    except OSError as error:
+        temporary.unlink(missing_ok=True)
+        raise GovernanceError('BIND_ROLLBACK_FAILED:{}'.format(destination)) from error
 
 
 def bind_sources(repo_root: Path) -> int:
@@ -421,17 +499,55 @@ def bind_sources(repo_root: Path) -> int:
     profiles = _profiles_by_id(repo_root)
     if len(agents) != len(profiles):
         raise GovernanceError('PROFILE_DISCOVERY_COUNT_MISMATCH')
-    replacements: list[tuple[Path, bytes]] = []
+    replacements: list[tuple[Path, Path, bytes, int]] = []
+    prepared_temps: list[Path] = []
     for agent in agents:
         profile = profiles.get(agent.role_id)
         if profile is None or profile.get('source_path') != agent.source_path:
             raise GovernanceError('MISSING_OR_MISMATCHED_PROFILE:{}'.format(agent.role_id))
         path = repo_root / agent.source_path
         replacement = _bound_source_bytes(path, agent.role_id)
-        if replacement != path.read_bytes():
-            replacements.append((path, replacement))
-    for path, replacement in replacements:
-        _atomic_replace(path, replacement)
+        current = stable_source_hash(path)
+        if current != profile.get('source_hash'):
+            raise GovernanceError('SOURCE_HASH_MISMATCH:{}'.format(agent.role_id))
+        original = path.read_bytes()
+        if replacement != original:
+            try:
+                temporary, mode = _write_staged_file(path, replacement)
+            except GovernanceError:
+                for cleanup in prepared_temps:
+                    cleanup.unlink(missing_ok=True)
+                raise
+            replacements.append((path, temporary, original, mode))
+            prepared_temps.append(temporary)
+    if not replacements:
+        return 0
+
+    replaced: list[tuple[Path, bytes, int]] = []
+    for index, (path, temporary, original, mode) in enumerate(replacements):
+        try:
+            _replace_from_temp(temporary, path)
+            replaced.append((path, original, mode))
+            temporary.unlink(missing_ok=True)
+        except GovernanceError as error:
+            failure = GovernanceError('BIND_REPLACE_FAILED:{}'.format(path))
+            rollback_errors: list[str] = []
+            for rollback_path, rollback_original, rollback_mode in reversed(replaced):
+                try:
+                    _rollback_to_original(rollback_path, rollback_original, rollback_mode)
+                except GovernanceError as rollback_error:
+                    rollback_errors.append(str(rollback_error))
+            for rollback_temp in (item[1] for item in replacements[index:]):
+                rollback_temp.unlink(missing_ok=True)
+            if rollback_errors:
+                raise GovernanceError(
+                    'ROLLBACK_FAILED:{}'.format(';'.join(rollback_errors))
+                ) from failure
+            raise failure from error
+
+    for temporary in prepared_temps:
+        if temporary.exists():
+            temporary.unlink(missing_ok=True)
     return len(replacements)
 
 

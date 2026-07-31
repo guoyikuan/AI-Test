@@ -3,15 +3,23 @@ import re
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from governance import load_schema, validate_profile, validate_response
+import scripts.governance as governance
 from scripts.governance import (
     GovernanceError,
     bind_sources,
     build_profiles,
+    _GOVERNANCE_PROFILE_LINE,
+    _bound_source_bytes,
+    _FRONTMATTER_CLOSE,
+    _FRONTMATTER_OPEN,
     discover_agents,
     read_agent,
+    verify_bindings,
+    stable_source_hash,
     render_governance,
     render_governed_body,
 )
@@ -435,6 +443,125 @@ class GovernanceContractTests(unittest.TestCase):
             raise AssertionError("source does not contain a complete frontmatter block")
         return raw[fences[1].end():]
 
+    @staticmethod
+    def _frontmatter_bounds(raw: bytes) -> tuple[int, int, int, int]:
+        opening = _FRONTMATTER_OPEN.match(raw)
+        if opening is None:
+            raise AssertionError("source missing frontmatter")
+        closing = _FRONTMATTER_CLOSE.search(raw, opening.end())
+        if closing is None:
+            raise AssertionError("source missing frontmatter close")
+        return opening.start(), opening.end(), closing.start(), closing.end()
+
+    def _remove_governance_profile_line(self, raw: bytes) -> bytes:
+        _, opening_end, closing_start, _ = self._frontmatter_bounds(raw)
+        frontmatter = raw[opening_end:closing_start]
+        removed = re.sub(_GOVERNANCE_PROFILE_LINE, b"", frontmatter, count=1)
+        return raw[:opening_end] + removed + raw[closing_start:]
+
+    @staticmethod
+    def _is_temp_bind_file(path: Path) -> bool:
+        return path.name.startswith(".governance-bind-") and path.suffix == ".tmp"
+
+    def test_stable_source_hash_matches_persisted_profiles_and_binding_line_is_not_in_hash(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            agents = discover_agents(fixture_root)
+            profiles = build_profiles(fixture_root)
+            hashes = {profile["role_id"]: profile["source_hash"] for profile in profiles}
+
+            self.assertEqual(len(profiles), 269)
+            for agent in agents:
+                source = fixture_root / agent.source_path
+                self.assertEqual(stable_source_hash(source), hashes[agent.role_id])
+
+            sample_agent = agents[0]
+            sample_source = fixture_root / sample_agent.source_path
+            original = sample_source.read_bytes()
+
+            sample_source.write_bytes(self._remove_governance_profile_line(original))
+            self.assertEqual(stable_source_hash(sample_source), hashes[sample_agent.role_id])
+
+            sample_source.write_bytes(_bound_source_bytes(sample_source, sample_agent.role_id))
+            self.assertEqual(stable_source_hash(sample_source), hashes[sample_agent.role_id])
+        finally:
+            directory.cleanup()
+
+    def test_verify_bindings_rejects_duplicate_governance_profile_bindings(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            source = (fixture_root / discover_agents(fixture_root)[0].source_path)
+            raw = source.read_bytes()
+            _, opening_end, closing_start, _ = self._frontmatter_bounds(raw)
+            frontmatter = raw[opening_end:closing_start]
+            if not _GOVERNANCE_PROFILE_LINE.search(frontmatter):
+                raise AssertionError("expected governance_profile binding in fixture")
+
+            duplicated = re.sub(
+                _GOVERNANCE_PROFILE_LINE,
+                lambda match: match.group(0) + match.group(0),
+                frontmatter,
+                count=1,
+            )
+            source.write_bytes(raw[:opening_end] + duplicated + raw[closing_start:])
+
+            with self.assertRaisesRegex(
+                GovernanceError,
+                "DUPLICATE_GOVERNANCE_PROFILE",
+            ):
+                verify_bindings(fixture_root)
+        finally:
+            directory.cleanup()
+
+    def test_bind_sources_rolls_back_when_second_replace_fails(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            sources = sorted(
+                fixture_root / agent.source_path
+                for agent in discover_agents(fixture_root)
+            )
+            targets = sources[:2]
+            for source in targets:
+                source.write_bytes(self._remove_governance_profile_line(source.read_bytes()))
+            before = {path.relative_to(fixture_root): path.read_bytes() for path in sources}
+
+            state = {"calls": 0}
+            original_replace = governance.os.replace
+
+            def flaky_replace(*args):
+                state["calls"] += 1
+                if state["calls"] == 2:
+                    raise OSError("simulated replace failure")
+                return original_replace(*args)
+
+            with patch.object(governance.os, "replace", side_effect=flaky_replace):
+                with self.assertRaisesRegex(GovernanceError, "BIND_REPLACE_FAILED"):
+                    bind_sources(fixture_root)
+
+            after = {path.relative_to(fixture_root): path.read_bytes() for path in sources}
+            self.assertEqual(before, after)
+            temp_files = [
+                candidate
+                for candidate in fixture_root.rglob("**/*")
+                if candidate.is_file() and self._is_temp_bind_file(candidate)
+            ]
+            self.assertEqual(temp_files, [])
+        finally:
+            directory.cleanup()
+
+    def test_verify_bindings_rejects_stable_hash_mismatch_after_persona_change(self):
+        directory, fixture_root = self._isolated_repo_fixture()
+        try:
+            source = fixture_root / discover_agents(fixture_root)[0].source_path
+            raw = source.read_bytes()
+            _, _, closing_start, closing_end = self._frontmatter_bounds(raw)
+            source.write_bytes(raw[:closing_end] + b"\n#changed-body-marker\n" + raw[closing_end:])
+
+            with self.assertRaisesRegex(GovernanceError, "SOURCE_HASH_MISMATCH"):
+                verify_bindings(fixture_root)
+        finally:
+            directory.cleanup()
+
     def test_binding_preserves_body_bytes_and_is_atomic_idempotent(self):
         directory, fixture_root = self._isolated_repo_fixture()
         try:
@@ -488,6 +615,19 @@ class GovernanceContractTests(unittest.TestCase):
                 "\n# 中文主体 😀\n\n必须逐字保留：中文、emoji 🧪、多字节文本。\n"
             ).encode("utf-8")
             source.write_bytes(unicode_frontmatter + original_body)
+
+            profiles_path = fixture_root / "governance/role-governance-profiles.json"
+            profiles = json.loads(profiles_path.read_text(encoding="utf-8"))
+            profile = next(
+                candidate
+                for candidate in profiles
+                if candidate["role_id"] == agent.role_id
+            )
+            profile["source_hash"] = stable_source_hash(source)
+            profiles_path.write_text(
+                json.dumps(profiles, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
 
             discovered = next(
                 candidate
