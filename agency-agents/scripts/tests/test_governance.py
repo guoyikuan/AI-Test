@@ -717,7 +717,11 @@ class GovernanceContractTests(unittest.TestCase):
                 fixture_root / agent.source_path
                 for agent in discover_agents(fixture_root)
             )
-            before = {path.relative_to(fixture_root): path.read_bytes() for path in sources}
+            before = {}
+            for path in sources:
+                unbound = self._remove_governance_profile_line(path.read_bytes())
+                path.write_bytes(unbound)
+                before[path.relative_to(fixture_root)] = unbound
 
             first_count = bind_sources(fixture_root)
             first_state = {
@@ -730,7 +734,7 @@ class GovernanceContractTests(unittest.TestCase):
                 for path in sources
             }
 
-            self.assertEqual(first_count, 0)
+            self.assertEqual(first_count, 269)
             self.assertEqual(second_count, 0)
             self.assertEqual(first_state, second_state)
             for relative_path, original in before.items():
