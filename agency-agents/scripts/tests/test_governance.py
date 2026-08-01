@@ -10,18 +10,23 @@ from governance import load_schema, validate_profile, validate_response
 import scripts.governance as governance
 from scripts.governance import (
     GovernanceError,
+    Agent,
     bind_sources,
     build_profiles,
+    _collect_manifest_entries,
     _GOVERNANCE_PROFILE_LINE,
     _bound_source_bytes,
+    _expected_tool_directories,
     _FRONTMATTER_CLOSE,
     _FRONTMATTER_OPEN,
+    _validate_hermes_agents,
     discover_agents,
     read_agent,
+    verify_generated,
     verify_bindings,
-    stable_source_hash,
     render_governance,
     render_governed_body,
+    stable_source_hash,
 )
 
 
@@ -45,13 +50,12 @@ class GovernanceContractTests(unittest.TestCase):
                 "low": "self-service",
                 "medium": "current-user-approval",
                 "high": "current-user-and-supervisor",
-                "write": "current-user-and-supervisor",
-                "external_side_effect": "current-user-and-supervisor",
             },
             "source_hash": "a" * 64,
             "source_path": "engineering/frontend-dev.md",
             "policy_source": "governance/policies/engineering.json",
             "exception_source": "governance/exceptions/engineering.json",
+            "side_effects": ["write", "external_side_effect"],
         }
 
     def test_governed_response_requires_complete_fixed_object(self):
@@ -172,6 +176,7 @@ class GovernanceContractTests(unittest.TestCase):
                 "risk_rules",
                 "allowed_systems",
                 "approval_matrix",
+                "side_effects",
                 "source_hash",
                 "source_path",
                 "policy_source",
@@ -263,13 +268,14 @@ class GovernanceContractTests(unittest.TestCase):
         self.assertTrue(high_risk_profiles)
         for profile in high_risk_profiles:
             self.assertEqual(profile["allowed_write_actions"], [])
+            self.assertEqual(profile["approval_matrix"]["high"], "current-user-and-supervisor")
             self.assertEqual(
-                profile["approval_matrix"]["write"],
-                "current-user-and-supervisor",
+                sorted(profile["side_effects"]),
+                sorted(["write", "external_side_effect"]),
             )
             self.assertEqual(
-                profile["approval_matrix"]["external_side_effect"],
-                "current-user-and-supervisor",
+                profile["side_effects"],
+                ["write", "external_side_effect"],
             )
 
     def test_profile_order_and_source_hashes_are_deterministic(self):
@@ -817,6 +823,416 @@ class GovernanceContractTests(unittest.TestCase):
             self.assertFalse(link.is_file() and not link.is_symlink())
         finally:
             directory.cleanup()
+
+    def test_collect_manifest_entries_rejects_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "generated"
+            root.mkdir()
+            managed = root / "github-copilot"
+            managed.mkdir(parents=True)
+
+            target = root / "source.md"
+            target.write_text("# source", encoding="utf-8")
+            (managed / "agent.md").symlink_to(target)
+
+            with self.assertRaisesRegex(
+                GovernanceError,
+                "MANIFEST_ENTRY_SYMLINK",
+            ):
+                _collect_manifest_entries(root)
+
+    def test_collect_manifest_entries_rejects_root_and_tool_symlinks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            real_root = base / "real-generated"
+            real_root.mkdir()
+            linked_root = base / "linked-generated"
+            linked_root.symlink_to(real_root, target_is_directory=True)
+            with self.assertRaisesRegex(GovernanceError, "MANIFEST_ROOT_SYMLINK"):
+                _collect_manifest_entries(linked_root)
+
+            real_tool = base / "real-kimi"
+            real_tool.mkdir()
+            (real_root / "kimi").symlink_to(real_tool, target_is_directory=True)
+            with self.assertRaisesRegex(
+                GovernanceError,
+                "MANIFEST_TOOL_ROOT_SYMLINK",
+            ):
+                _collect_manifest_entries(real_root)
+
+    def test_verify_generated_rejects_generated_root_symlink_before_resolution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            real_root = base / "real-generated"
+            real_root.mkdir()
+            linked_root = base / "linked-generated"
+            linked_root.symlink_to(real_root, target_is_directory=True)
+            with self.assertRaisesRegex(GovernanceError, "GENERATED_ROOT_SYMLINK"):
+                verify_generated(base, linked_root, 1, 1)
+
+    def test_validate_hermes_agents_rejects_body_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo_root = Path(directory)
+            agents_root = repo_root / "agents-json"
+            data_root = agents_root / "data"
+            data_root.mkdir(parents=True)
+            payload = [
+                {
+                    "slug": "frontend-developer",
+                    "governance_profile": "frontend-dev",
+                    "governance_digest": "f" * 64,
+                    "body": "actual body",
+                    "source_path": "engineering/frontend-engineer.md",
+                }
+            ]
+            (data_root / "agents.json").write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+
+            with patch.object(
+                governance,
+                "_profiles_by_id",
+                return_value={
+                    "frontend-dev": {
+                        "source_path": "engineering/frontend-engineer.md",
+                    }
+                },
+            ):
+                fake_agent = Agent(
+                    role_id="frontend-dev",
+                    name="Frontend Developer",
+                    division="engineering",
+                    source_path="engineering/frontend-engineer.md",
+                    source_sha256="a" * 64,
+                )
+                with patch.object(governance, "discover_agents", return_value=[fake_agent]):
+                    with patch.object(
+                        governance,
+                        "render_governed_body",
+                        return_value="expected governance body",
+                    ):
+                        with self.assertRaisesRegex(
+                            GovernanceError,
+                            "HERMES_AGENT_BODY_MISMATCH",
+                        ):
+                            _validate_hermes_agents(repo_root, agents_root, 1)
+
+    def test_validate_hermes_agents_rejects_duplicate_identity_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo_root = Path(directory)
+            agents_root = repo_root / "agents-json"
+            data_root = agents_root / "data"
+            data_root.mkdir(parents=True)
+            rendered = "governed"
+            payload = [
+                {
+                    "slug": "frontend-developer",
+                    "governance_profile": "frontend-dev",
+                    "governance_digest": governance._hash_hex(rendered),
+                    "body": rendered,
+                    "source_path": "engineering/frontend-engineer.md",
+                },
+                {
+                    "slug": "different-slug",
+                    "governance_profile": "frontend-dev",
+                    "governance_digest": governance._hash_hex(rendered),
+                    "body": rendered,
+                    "source_path": "engineering/other.md",
+                },
+            ]
+            (data_root / "agents.json").write_text(
+                json.dumps(payload, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            fake_agents = [
+                Agent(
+                    "frontend-dev",
+                    "Frontend Developer",
+                    "engineering",
+                    "engineering/frontend-engineer.md",
+                    "a" * 64,
+                ),
+                Agent(
+                    "other",
+                    "Other",
+                    "engineering",
+                    "engineering/other.md",
+                    "b" * 64,
+                ),
+            ]
+            profiles = {
+                "frontend-dev": {"source_path": "engineering/frontend-engineer.md"},
+                "other": {"source_path": "engineering/other.md"},
+            }
+            with patch.object(governance, "discover_agents", return_value=fake_agents):
+                with patch.object(governance, "_profiles_by_id", return_value=profiles):
+                    with patch.object(
+                        governance,
+                        "render_governed_body",
+                        return_value=rendered,
+                    ):
+                        with self.assertRaisesRegex(
+                            GovernanceError,
+                            "HERMES_DUPLICATE_GOVERNANCE_PROFILE",
+                        ):
+                            _validate_hermes_agents(repo_root, agents_root, 2)
+
+    def test_validate_hermes_agents_rejects_set_drift_from_discovery(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo_root = Path(directory)
+            agents_root = repo_root / "agents-json"
+            data_root = agents_root / "data"
+            data_root.mkdir(parents=True)
+            rendered = "governed"
+            (data_root / "agents.json").write_text(
+                json.dumps([{
+                    "slug": "stale",
+                    "governance_profile": "stale",
+                    "governance_digest": governance._hash_hex(rendered),
+                    "body": rendered,
+                    "source_path": "engineering/stale.md",
+                }]),
+                encoding="utf-8",
+            )
+            discovered = Agent(
+                "current",
+                "Current",
+                "engineering",
+                "engineering/current.md",
+                "a" * 64,
+            )
+            with patch.object(governance, "discover_agents", return_value=[discovered]):
+                with patch.object(
+                    governance,
+                    "_profiles_by_id",
+                    return_value={"stale": {"source_path": "engineering/stale.md"}},
+                ):
+                    with patch.object(
+                        governance,
+                        "render_governed_body",
+                        return_value=rendered,
+                    ):
+                        with self.assertRaisesRegex(
+                            GovernanceError,
+                            "HERMES_GOVERNANCE_PROFILE_SET_MISMATCH",
+                        ):
+                            _validate_hermes_agents(repo_root, agents_root, 1)
+
+    def test_validate_hermes_agents_rejects_json_symlink_before_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            agents_root = base / "agents-json"
+            agents_root.mkdir()
+            external_data = base / "external-data"
+            external_data.mkdir()
+            (external_data / "agents.json").write_text("[]", encoding="utf-8")
+            (agents_root / "data").symlink_to(external_data, target_is_directory=True)
+
+            with self.assertRaisesRegex(
+                GovernanceError,
+                "HERMES_ARTIFACT_SYMLINK",
+            ):
+                _validate_hermes_agents(agents_root, agents_root, 1)
+
+    def _minimal_generated_fixture(self, base: Path) -> tuple[Path, Path, Agent]:
+        repo_root = base / "repo"
+        generated_root = base / "generated"
+        generated_root.mkdir(parents=True)
+        source_path = "engineering/frontend-developer.md"
+        source = repo_root / source_path
+        source.parent.mkdir(parents=True)
+        source.write_text(
+            "---\n"
+            "name: Frontend Developer\n"
+            "description: Minimal fixture\n"
+            "governance_profile: frontend-dev\n"
+            "---\n"
+            "Persona\n",
+            encoding="utf-8",
+        )
+        agent = Agent(
+            "frontend-dev",
+            "Frontend Developer",
+            "engineering",
+            source_path,
+            "a" * 64,
+        )
+        fields, persona = read_agent(source)
+        governed = "Governance\n\nPersona"
+        expected_files, sections = governance._expected_agent_output_texts(
+            agent,
+            fields,
+            "Governance",
+            governed,
+            persona,
+        )
+        tool_directories = _expected_tool_directories()
+        for directory_name in tool_directories.values():
+            (generated_root / directory_name).mkdir(parents=True)
+        for relative, text in expected_files.items():
+            tool, tool_relative = relative.split("/", 1)
+            target = generated_root / tool_directories[tool] / tool_relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if relative.startswith("codex/"):
+                target.write_text(
+                    'name = "Frontend Developer"\n'
+                    'description = "Minimal fixture"\n'
+                    'developer_instructions = "Governance\\n\\nPersona"\n',
+                    encoding="utf-8",
+                )
+            else:
+                target.write_text(text, encoding="utf-8")
+        (generated_root / "aider" / "CONVENTIONS.md").write_text(
+            governance._expected_aider_document([sections[0]]),
+            encoding="utf-8",
+        )
+        (generated_root / "windsurf" / ".windsurfrules").write_text(
+            governance._expected_windsurf_document([sections[1]]),
+            encoding="utf-8",
+        )
+        (generated_root / "hermes" / "agency-agents-router").mkdir()
+        return repo_root, generated_root, agent
+
+    def _verify_minimal_generated(self, repo_root: Path, generated_root: Path, agent: Agent):
+        profile = {
+            "role_id": agent.role_id,
+            "source_path": agent.source_path,
+        }
+        with patch.object(governance, "discover_agents", return_value=[agent]):
+            with patch.object(governance, "build_profiles", return_value=[profile]):
+                with patch.object(
+                    governance,
+                    "_load_tools_list",
+                    return_value=sorted(_expected_tool_directories().keys()),
+                ):
+                    with patch.object(
+                        governance,
+                        "render_governance",
+                        return_value="Governance",
+                    ):
+                        with patch.object(
+                            governance,
+                            "render_governed_body",
+                            return_value="Governance\n\nPersona",
+                        ):
+                            with patch.object(
+                                governance,
+                                "_validate_hermes_agents",
+                                return_value={"record_count": 1},
+                            ):
+                                return verify_generated(repo_root, generated_root, 1, 16)
+
+    def test_verify_generated_rejects_kimi_vibe_and_aggregate_injection(self):
+        mutations = (
+            ("kimi/frontend-developer/system.md", "prefix"),
+            ("vibe/prompts/frontend-developer.md", "prefix"),
+            ("aider/CONVENTIONS.md", "suffix"),
+            ("windsurf/.windsurfrules", "suffix"),
+        )
+        for relative, position in mutations:
+            with self.subTest(relative=relative):
+                with tempfile.TemporaryDirectory() as directory:
+                    repo_root, generated_root, agent = self._minimal_generated_fixture(
+                        Path(directory)
+                    )
+                    target = generated_root / relative
+                    original = target.read_text(encoding="utf-8")
+                    injected = "UNEXPECTED\n"
+                    target.write_text(
+                        injected + original if position == "prefix" else original + injected,
+                        encoding="utf-8",
+                    )
+                    with self.assertRaisesRegex(
+                        GovernanceError,
+                        "TOOL_FILE_MISMATCH|AGGREGATE_DOCUMENT_MISMATCH",
+                    ):
+                        self._verify_minimal_generated(repo_root, generated_root, agent)
+
+    def test_verify_generated_rejects_artifact_symlink(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo_root, generated_root, agent = self._minimal_generated_fixture(
+                Path(directory)
+            )
+            artifact = generated_root / "kimi/frontend-developer/system.md"
+            target = generated_root / "kimi/frontend-developer/real-system.md"
+            artifact.rename(target)
+            artifact.symlink_to(target.name)
+            with self.assertRaisesRegex(
+                GovernanceError,
+                "GENERATED_ARTIFACT_SYMLINK",
+            ):
+                self._verify_minimal_generated(repo_root, generated_root, agent)
+
+
+    def test_verify_generated_rejects_missing_governance_binding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo_root = Path(directory)
+            generated_root = repo_root / "integrations"
+            generated_root.mkdir()
+
+            tool_dirs = _expected_tool_directories()
+            for directory_name in tool_dirs.values():
+                (generated_root / directory_name).mkdir(parents=True)
+
+            (generated_root / "aider" / "CONVENTIONS.md").write_text(
+                "# test\n", encoding="utf-8"
+            )
+            (generated_root / "windsurf" / ".windsurfrules").write_text(
+                "# test\n", encoding="utf-8"
+            )
+            (generated_root / "hermes" / "agency-agents-router").mkdir(parents=True)
+
+            fake_agent = Agent(
+                role_id="frontend-dev",
+                name="Frontend Developer",
+                division="engineering",
+                source_path="engineering/frontend-developer.md",
+                source_sha256="a" * 64,
+                authority="",
+            )
+            fake_profile = {
+                "role_id": "frontend-dev",
+                "role_name": "Frontend Developer",
+                "division": "engineering",
+                "risk_level": "low",
+                "source_path": "engineering/frontend-developer.md",
+                "source_hash": "a" * 64,
+            }
+
+            # Minimal failure-path: no governance_profile binding in rendered source.
+            source_fields = {
+                "name": "Frontend Developer",
+                "description": "Frontend test profile",
+            }
+
+            with patch.object(governance, "discover_agents", return_value=[fake_agent]):
+                with patch.object(governance, "build_profiles", return_value=[fake_profile]):
+                    with patch.object(
+                        governance,
+                        "_load_tools_list",
+                        return_value=sorted(tool_dirs.keys()),
+                    ):
+                        with patch.object(
+                            governance,
+                            "read_agent",
+                            return_value=(source_fields, "source body"),
+                        ):
+                            with patch.object(
+                                governance,
+                                "_validate_hermes_agents",
+                                return_value={"record_count": 1},
+                            ):
+                                with self.assertRaisesRegex(
+                                    GovernanceError,
+                                    "MISMATCHED_GOVERNANCE_BINDING",
+                                ):
+                                    verify_generated(
+                                        repo_root,
+                                        generated_root,
+                                        1,
+                                        len(tool_dirs),
+                                    )
 
 
 if __name__ == "__main__":

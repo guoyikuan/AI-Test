@@ -10,6 +10,13 @@
       "type": "array",
       "uniqueItems": true
     },
+    "sideEffect": {
+      "enum": [
+        "write",
+        "external_side_effect"
+      ],
+      "type": "string"
+    },
     "approvalDecision": {
       "enum": [
         "self-service",
@@ -38,9 +45,6 @@
     "approval_matrix": {
       "additionalProperties": false,
       "properties": {
-        "external_side_effect": {
-          "$ref": "#/$defs/approvalDecision"
-        },
         "high": {
           "$ref": "#/$defs/approvalDecision"
         },
@@ -49,17 +53,12 @@
         },
         "medium": {
           "$ref": "#/$defs/approvalDecision"
-        },
-        "write": {
-          "$ref": "#/$defs/approvalDecision"
         }
       },
       "required": [
         "low",
         "medium",
-        "high",
-        "write",
-        "external_side_effect"
+        "high"
       ],
       "type": "object"
     },
@@ -110,6 +109,14 @@
     "source_path": {
       "pattern": "^[a-z0-9][a-z0-9._/-]{0,499}$",
       "type": "string"
+    },
+    "side_effects": {
+      "items": {
+        "$ref": "#/$defs/sideEffect"
+      },
+      "maxItems": 2,
+      "type": "array",
+      "uniqueItems": true
     }
   },
   "required": [
@@ -123,6 +130,7 @@
     "risk_rules",
     "allowed_systems",
     "approval_matrix",
+    "side_effects",
     "source_hash",
     "source_path",
     "policy_source",

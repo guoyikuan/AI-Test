@@ -11,10 +11,15 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+try:
+    import tomllib
+except ImportError:  # pragma: no cover - py<3.11 compatibility fallback
+    import tomli as tomllib
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+if str(_REPO_ROOT) in sys.path:
+    sys.path.remove(str(_REPO_ROOT))
+sys.path.insert(0, str(_REPO_ROOT))
 from governance import validate_profile
 
 class GovernanceError(ValueError):
@@ -33,9 +38,12 @@ APPROVAL_MATRIX = {
     'low': 'self-service',
     'medium': 'current-user-approval',
     'high': 'current-user-and-supervisor',
-    'write': 'current-user-and-supervisor',
-    'external_side_effect': 'current-user-and-supervisor',
 }
+
+SIDE_EFFECTS = (
+    'write',
+    'external_side_effect',
+)
 
 SENSITIVE_TERMS = (
     'security',
@@ -76,6 +84,9 @@ _GOVERNANCE_PROFILE_LINE = re.compile(
     br'(?m)^governance_profile:[^\r\n]*(?:\r?\n|$)'
 )
 _MUSTACHE_TOKEN = re.compile(r'\{\{[^{}\r\n]+\}\}')
+_UNRESOLVED_GOVERNANCE_TOKEN = re.compile(
+    r"\{\{(?:ROLE_NAME|ALLOWED_READ_ACTIONS|ALLOWED_WRITE_ACTIONS|FORBIDDEN_ACTIONS|RISK_RULES|APPROVAL_MATRIX|ALLOWED_SYSTEMS)\}\}"
+)
 _BINDING_TMP_PREFIX = '.governance-bind-'
 
 
@@ -267,7 +278,9 @@ def resolve_profile(agent: Agent, policies: dict[str, Any], overrides: dict[str,
         'allowed_write_actions': [] if risk == 'high' else sorted(policy.get('allowed_write_actions', [])),
         'forbidden_actions': sorted(policy.get('forbidden_actions', [])),
         'risk_rules': sorted(policy.get('risk_rules', [])), 'allowed_systems': sorted(policy.get('allowed_systems', [])),
-        'approval_matrix': dict(APPROVAL_MATRIX), 'source_hash': agent.source_sha256, 'source_path': agent.source_path,
+        'approval_matrix': dict(APPROVAL_MATRIX),
+        'side_effects': list(SIDE_EFFECTS) if risk == 'high' else [],
+        'source_hash': agent.source_sha256, 'source_path': agent.source_path,
         'policy_source': 'governance/department-policies.json#departments/{}'.format(agent.division),
         'exception_source': 'governance/role-overrides.json#{}'.format(agent.role_id) if override else 'governance/role-overrides.json#none',
     }
@@ -379,12 +392,10 @@ def _compact_matrix(matrix: Any) -> str:
         'low': '低风险',
         'medium': '中风险',
         'high': '高风险',
-        'write': '写入',
-        'external_side_effect': '外部副作用',
     }
     return '；'.join(
         '{}：{}'.format(labels[key], matrix[key])
-        for key in ('low', 'medium', 'high', 'write', 'external_side_effect')
+        for key in ('low', 'medium', 'high')
         if key in matrix
     )
 
@@ -423,7 +434,7 @@ def render_governance(repo_root: Path, source: Path) -> str:
     rendered = template
     for key in _GOVERNANCE_VARIABLES:
         rendered = rendered.replace('{{{{{}}}}}'.format(key), resolved[key])
-    if _MUSTACHE_TOKEN.search(rendered):
+    if _UNRESOLVED_GOVERNANCE_TOKEN.search(rendered):
         raise GovernanceError('UNRESOLVED_GOVERNANCE_VARIABLE')
     return rendered
 
@@ -616,6 +627,790 @@ def verify_bindings(repo_root: Path) -> int:
             raise GovernanceError('MISMATCHED_GOVERNANCE_BINDING:{}'.format(agent.source_path))
     return len(agents)
 
+
+def _load_tools_list(repo_root: Path) -> list[str]:
+    tools_document = load_json(repo_root / "tools.json")
+    tools_section = tools_document.get("tools")
+    if not isinstance(tools_section, dict):
+        raise GovernanceError('INVALID_TOOLS_MANIFEST')
+    return sorted(tools_section.keys())
+
+
+def _resolve_directory_before_traversal(
+    path: Path,
+    *,
+    symlink_code: str,
+    invalid_code: str,
+) -> Path:
+    if path.is_symlink():
+        raise GovernanceError('{}:{}'.format(symlink_code, path))
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as error:
+        raise GovernanceError('{}:{}'.format(invalid_code, path)) from error
+    if not resolved.is_dir():
+        raise GovernanceError('{}:{}'.format(invalid_code, path))
+    return resolved
+
+
+def _collect_manifest_entries(root: Path, output: Path | None = None) -> list[dict[str, Any]]:
+    root_path = _resolve_directory_before_traversal(
+        root,
+        symlink_code='MANIFEST_ROOT_SYMLINK',
+        invalid_code='INVALID_MANIFEST_ROOT',
+    )
+    output_path = output.resolve() if output is not None else None
+    managed_roots = set(_expected_tool_directories().values())
+    for managed_root in sorted(managed_roots):
+        tool_root = root / managed_root
+        if tool_root.is_symlink():
+            raise GovernanceError('MANIFEST_TOOL_ROOT_SYMLINK:{}'.format(tool_root))
+        if not tool_root.exists():
+            continue
+        try:
+            tool_root.resolve(strict=True).relative_to(root_path)
+        except (OSError, ValueError) as error:
+            raise GovernanceError(
+                'MANIFEST_TOOL_ROOT_OUTSIDE_ROOT:{}'.format(tool_root)
+            ) from error
+
+    entries: list[dict[str, Any]] = []
+    for path in sorted(root.rglob("*"), key=lambda item: item.relative_to(root).as_posix()):
+        if path.is_symlink():
+            raise GovernanceError('MANIFEST_ENTRY_SYMLINK:{}'.format(path))
+        if not path.is_file():
+            continue
+        relative = path.relative_to(root)
+        if relative.parts[0] not in managed_roots or path.name == "README.md":
+            continue
+        try:
+            resolved = path.resolve(strict=True)
+            resolved.relative_to(root_path)
+        except (OSError, ValueError) as error:
+            raise GovernanceError('MANIFEST_ENTRY_OUTSIDE_ROOT:{}'.format(path)) from error
+        if output_path is not None and resolved == output_path:
+            continue
+        body = path.read_bytes()
+        entries.append({
+            "path": relative.as_posix(),
+            "bytes": len(body),
+            "sha256": hashlib.sha256(body).hexdigest(),
+        })
+    return entries
+
+
+def _read_file_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise GovernanceError('MISSING_GENERATED_FILE:{}'.format(path)) from error
+
+
+def _expected_frontmatter_text(fields: list[str], body: str) -> str:
+    """Build the exact markdown artifact text used by the converters."""
+    frontmatter = ["---"] + fields + ["---"]
+    return "{}\n{}\n".format("\n".join(frontmatter), body)
+
+
+def _resolve_opencode_color(color_value: str) -> str:
+    mapped = color_value.strip().lower()
+    colors = {
+        "cyan": "#00FFFF",
+        "blue": "#3498DB",
+        "green": "#2ECC71",
+        "red": "#E74C3C",
+        "purple": "#9B59B6",
+        "orange": "#F39C12",
+        "teal": "#008080",
+        "indigo": "#6366F1",
+        "pink": "#E84393",
+        "gold": "#EAB308",
+        "amber": "#F59E0B",
+        "neon-green": "#10B981",
+        "neon-cyan": "#06B6D4",
+        "metallic-blue": "#3B82F6",
+        "yellow": "#EAB308",
+        "violet": "#8B5CF6",
+        "rose": "#F43F5E",
+        "lime": "#84CC16",
+        "gray": "#6B7280",
+        "fuchsia": "#D946EF",
+    }
+    if re.fullmatch(r"#[0-9a-f]{6}", mapped, flags=re.IGNORECASE):
+        return "#%s" % mapped[-6:].upper()
+    return colors.get(mapped, "#6B7280")
+
+
+def _expected_aider_section(name: str, description: str, body: str) -> str:
+    return "\n\n---\n\n## {}\n\n> {}\n\n{}\n".format(
+        name,
+        description,
+        body,
+    )
+
+
+def _expected_windsurf_section(name: str, description: str, body: str) -> str:
+    return "\n\n================================================================================\n## {}\n{}\n================================================================================\n\n{}\n".format(
+        name,
+        description,
+        body,
+    )
+
+
+_AIDER_HEADER = """# The Agency — AI Agent Conventions
+#
+# This file provides Aider with the full roster of specialized AI agents from
+# The Agency (https://github.com/msitarzewski/agency-agents).
+#
+# To activate an agent, reference it by name in your Aider session prompt, e.g.:
+#   "Use the Frontend Developer agent to review this component."
+#
+# Generated by scripts/convert.sh — do not edit manually.
+
+"""
+
+_WINDSURF_HEADER = """# The Agency — AI Agent Rules for Windsurf
+#
+# Full roster of specialized AI agents from The Agency.
+# To activate an agent, reference it by name in your Windsurf conversation.
+#
+# Generated by scripts/convert.sh — do not edit manually.
+
+"""
+
+
+def _expected_aider_document(sections: list[str]) -> str:
+    return _AIDER_HEADER + ''.join(sections)
+
+
+def _expected_windsurf_document(sections: list[str]) -> str:
+    return _WINDSURF_HEADER + ''.join(sections)
+
+
+def _expected_agent_output_texts(
+    agent: Agent,
+    source_fields: dict[str, str],
+    rendered_governance: str,
+    rendered_body: str,
+    persona_body: str,
+) -> tuple[dict[str, str], list[str]]:
+    """Return expected text map and expected section blocks for aggregate tools."""
+    rendered_governance = rendered_governance.rstrip("\n")
+    rendered_body = rendered_body.rstrip("\n")
+    persona_body = persona_body.rstrip("\n")
+    slug = _slugify(agent.name)
+    description = source_fields.get('description', '')
+    name = source_fields.get('name', agent.name)
+    tools = source_fields.get('tools', '')
+    emoji = source_fields.get('emoji', '')
+    vibe = source_fields.get('vibe', '')
+
+    aggregate_sections = [
+        _expected_aider_section(name, description, rendered_body),
+        _expected_windsurf_section(name, description, rendered_body),
+    ]
+
+    outputs: dict[str, str] = {
+        "antigravity/agency-{}/SKILL.md".format(slug): _expected_frontmatter_text(
+            ["name: agency-{}".format(slug), "description: {}".format(description)],
+            rendered_body,
+        ),
+        "osaurus/agency-{}/SKILL.md".format(slug): _expected_frontmatter_text(
+            ["name: agency-{}".format(slug), "description: {}".format(description)],
+            rendered_body,
+        ),
+        "codex/agents/{}.toml".format(slug): "",
+        "gemini-cli/agents/{}.md".format(slug): _expected_frontmatter_text(
+            ["name: {}".format(slug), "description: {}".format(description)],
+            rendered_body,
+        ),
+        "opencode/agents/{}.md".format(slug): _expected_frontmatter_text(
+            [
+                "name: {}".format(name),
+                "description: {}".format(description),
+                "mode: subagent",
+                "color: '{}'".format(_resolve_opencode_color(source_fields.get("color", "gray"))),
+            ],
+            rendered_body,
+        ),
+        "cursor/rules/{}.mdc".format(slug): _expected_frontmatter_text(
+            [
+                "description: {}".format(description),
+                'globs: ""',
+                "alwaysApply: false",
+            ],
+            rendered_body,
+        ),
+        "qwen/agents/{}.md".format(slug): _expected_frontmatter_text(
+            ["name: {}".format(slug), "description: {}".format(description)] + ([]
+                if not tools
+                else ["tools: {}".format(tools)]),
+            rendered_body,
+        ),
+        "zcode/agents/{}.md".format(slug): _expected_frontmatter_text(
+            ["name: {}".format(slug), "description: {}".format(description)] + ([]
+                if not tools else ["tools: {}".format(tools)]),
+            rendered_body,
+        ),
+        "kimi/{}/agent.yaml".format(slug): "version: 1\nagent:\n  name: {}\n  extend: default\n  system_prompt_path: ./system.md\n".format(
+            slug,
+        ),
+        "kimi/{}/system.md".format(slug): "# {}\n\n{}\n\n{}\n".format(
+            name,
+            description,
+            rendered_body,
+        ),
+        "vibe/agents/{}.toml".format(slug): 'agent_type = "agent"\nsystem_prompt_id = "{}"\n'.format(
+            slug
+        ),
+        "vibe/prompts/{}.md".format(slug): "# {}\n\n{}\n\n{}\n".format(
+            name,
+            description,
+            rendered_body,
+        ),
+        "claude-code/agents/{}.md".format(slug): _expected_frontmatter_text(
+            ["name: {}".format(name), "description: {}".format(description)],
+            rendered_body,
+        ),
+        "copilot/agents/{}.md".format(slug): _expected_frontmatter_text(
+            ["name: {}".format(name), "description: {}".format(description)],
+            rendered_body,
+        ),
+        "openclaw/{}/AGENTS.md".format(slug): "{}\n".format(rendered_governance),
+        "openclaw/{}/SOUL.md".format(slug): "{}".format(persona_body),
+    }
+    if emoji and vibe:
+        outputs["openclaw/{}/IDENTITY.md".format(slug)] = "# {} {}\n{}\n".format(emoji, name, vibe)
+    else:
+        outputs["openclaw/{}/IDENTITY.md".format(slug)] = "# {}\n{}\n".format(name, description)
+
+    return outputs, aggregate_sections
+
+
+def _assert_file_contents(path: Path, expected: str) -> None:
+    actual = _read_file_text(path)
+    if actual != expected:
+        raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(path))
+
+
+def _slugify(value: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '-', value.lower()).strip('-')
+
+
+def _load_toml(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding='utf-8')
+    except OSError as error:
+        raise GovernanceError('MISSING_GENERATED_FILE:{}'.format(path)) from error
+    try:
+        return tomllib.loads(text)
+    except (tomllib.TOMLDecodeError, ValueError) as error:
+        raise GovernanceError('INVALID_GENERATED_TOML:{}'.format(path)) from error
+
+
+def _count_files(root: Path, pattern: str) -> int:
+    return len(list(root.glob(pattern))) if root.exists() else 0
+
+
+def _count_directories(root: Path) -> int:
+    return len([entry for entry in root.iterdir() if entry.is_dir()]) if root.exists() else 0
+
+
+def _count_openclaw_workspaces(root: Path) -> int:
+    if not root.exists():
+        return 0
+    count = 0
+    for entry in root.iterdir():
+        if not entry.is_dir():
+            continue
+        if (entry / "SOUL.md").is_file() and (entry / "AGENTS.md").is_file():
+            count += 1
+    return count
+
+
+def _count_markdown_sections(path: Path) -> int:
+    text = _read_file_text(path).replace("\\r\\n", "\\n")
+    return len(re.findall(r"(?m)^## ", text))
+
+
+def _count_aider_sections(path: Path) -> int:
+    text = _read_file_text(path).replace("\\r\\n", "\\n")
+    return len(re.findall(r"\n---\n\n## ", text))
+
+
+def _count_windsurf_sections(path: Path) -> int:
+    text = _read_file_text(path).replace("\\r\\n", "\\n")
+    return text.count("\n================================================================================\n## ")
+
+
+def _hash_hex(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _load_agents_json(repo_root: Path) -> list[dict[str, Any]]:
+    data_root = repo_root / "data"
+    path = data_root / "agents.json"
+    if data_root.is_symlink() or path.is_symlink():
+        raise GovernanceError('HERMES_ARTIFACT_SYMLINK:{}'.format(path))
+    try:
+        resolved_root = repo_root.resolve(strict=True)
+        path.resolve(strict=True).relative_to(resolved_root)
+    except (OSError, ValueError) as error:
+        raise GovernanceError('HERMES_ARTIFACT_OUTSIDE_ROOT:{}'.format(path)) from error
+    if not path.is_file():
+        raise GovernanceError('MISSING_HERMES_AGENTS_JSON:{}'.format(path))
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise GovernanceError('INVALID_HERMES_AGENTS_JSON:{}'.format(path)) from error
+    if not isinstance(payload, list):
+        raise GovernanceError('INVALID_HERMES_AGENTS_JSON:{}'.format(path))
+    return payload
+
+
+def _validate_unresolved_governance_tokens(text: str, target: Path) -> None:
+    unresolved = _UNRESOLVED_GOVERNANCE_TOKEN.search(text)
+    if unresolved:
+        raise GovernanceError(
+            'UNRESOLVED_GOVERNANCE_TOKEN:{}:{}'.format(target.as_posix(), unresolved.group(0))
+        )
+
+
+def _ensure_token_free_texts(generated_root: Path) -> None:
+    for path in sorted(generated_root.rglob("*")):
+        if path.is_symlink():
+            raise GovernanceError('GENERATED_ARTIFACT_SYMLINK:{}'.format(path))
+        if not path.is_file():
+            continue
+        try:
+            path.resolve(strict=True).relative_to(generated_root)
+        except (OSError, ValueError) as error:
+            raise GovernanceError(
+                'GENERATED_ARTIFACT_OUTSIDE_ROOT:{}'.format(path)
+            ) from error
+        if path.name == "manifest.json":
+            continue
+        if path.name.endswith(".pyc"):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        _validate_unresolved_governance_tokens(text, path)
+
+
+def _expected_tool_directories() -> dict[str, str]:
+    return {
+        "antigravity": "antigravity",
+        "gemini-cli": "gemini-cli",
+        "opencode": "opencode",
+        "cursor": "cursor",
+        "aider": "aider",
+        "windsurf": "windsurf",
+        "openclaw": "openclaw",
+        "qwen": "qwen",
+        "zcode": "zcode",
+        "kimi": "kimi",
+        "codex": "codex",
+        "osaurus": "osaurus",
+        "hermes": "hermes",
+        "vibe": "vibe",
+        "claude-code": "claude-code",
+        "copilot": "github-copilot",
+    }
+
+
+def _load_source_agent_count(repo_root: Path) -> int:
+    return len(discover_agents(repo_root))
+
+
+def _controlled_generated_path(
+    generated_root: Path,
+    path: Path,
+    *,
+    directory: bool = False,
+) -> Path:
+    try:
+        relative = path.relative_to(generated_root)
+    except ValueError as error:
+        raise GovernanceError('GENERATED_ARTIFACT_OUTSIDE_ROOT:{}'.format(path)) from error
+
+    cursor = generated_root
+    for part in relative.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise GovernanceError('GENERATED_ARTIFACT_SYMLINK:{}'.format(cursor))
+
+    if directory:
+        if not path.is_dir():
+            raise GovernanceError('MISSING_GENERATED_DIRECTORY:{}'.format(path))
+    elif not path.is_file():
+        raise GovernanceError('MISSING_GENERATED_FILE:{}'.format(path))
+
+    try:
+        resolved = path.resolve(strict=True)
+        resolved.relative_to(generated_root)
+    except (OSError, ValueError) as error:
+        raise GovernanceError('GENERATED_ARTIFACT_OUTSIDE_ROOT:{}'.format(path)) from error
+    return resolved
+
+
+def _validate_hermes_agents(repo_root: Path, agents_root: Path, expected_agents: int) -> dict[str, Any]:
+    agents_payload = _load_agents_json(agents_root)
+    if len(agents_payload) != expected_agents:
+        raise GovernanceError(
+            'HERMES_AGENT_COUNT_MISMATCH:{}:{}'.format(len(agents_payload), expected_agents)
+        )
+
+    profiles = _profiles_by_id(repo_root)
+    discovered_agents = discover_agents(repo_root)
+    if len(discovered_agents) != expected_agents:
+        raise GovernanceError(
+            'HERMES_DISCOVERED_AGENT_COUNT_MISMATCH:{}:{}'.format(
+                len(discovered_agents),
+                expected_agents,
+            )
+        )
+    expected_profiles = {agent.role_id for agent in discovered_agents}
+    expected_sources = {agent.source_path for agent in discovered_agents}
+    expected_slugs = {_slugify(agent.name) for agent in discovered_agents}
+    if len(expected_slugs) != expected_agents:
+        raise GovernanceError('HERMES_DISCOVERED_SLUG_COLLISION')
+    agents_by_source = {agent.source_path: agent for agent in discovered_agents}
+    seen_profiles: set[str] = set()
+    seen_sources: set[str] = set()
+    seen_slugs: set[str] = set()
+
+    for index, record in enumerate(agents_payload, start=1):
+        if not isinstance(record, dict):
+            raise GovernanceError('INVALID_HERMES_AGENT_RECORD:{}'.format(index))
+        governance_profile = record.get("governance_profile")
+        governance_digest = record.get("governance_digest")
+        body = record.get("body")
+        source_path = record.get("source_path")
+        slug = record.get("slug")
+        if not isinstance(governance_profile, str) or governance_profile not in profiles:
+            raise GovernanceError('INVALID_HERMES_AGENT_PROFILE:{}'.format(index))
+        if governance_profile in seen_profiles:
+            raise GovernanceError(
+                'HERMES_DUPLICATE_GOVERNANCE_PROFILE:{}'.format(governance_profile)
+            )
+        seen_profiles.add(governance_profile)
+        if not isinstance(governance_digest, str) or not re.match(r"^[0-9a-f]{64}$", governance_digest):
+            raise GovernanceError('INVALID_HERMES_AGENT_DIGEST:{}'.format(index))
+        if not isinstance(body, str):
+            raise GovernanceError('INVALID_HERMES_AGENT_BODY:{}'.format(index))
+        if not isinstance(source_path, str):
+            raise GovernanceError('INVALID_HERMES_AGENT_SOURCE_PATH:{}'.format(index))
+        if not source_path:
+            raise GovernanceError('INVALID_HERMES_AGENT_SOURCE_PATH:{}'.format(index))
+        if source_path in seen_sources:
+            raise GovernanceError('HERMES_DUPLICATE_SOURCE_PATH:{}'.format(source_path))
+        seen_sources.add(source_path)
+        if not isinstance(slug, str) or not slug:
+            raise GovernanceError('INVALID_HERMES_AGENT_SLUG:{}'.format(index))
+        if slug in seen_slugs:
+            raise GovernanceError('HERMES_DUPLICATE_SLUG:{}'.format(slug))
+        seen_slugs.add(slug)
+        discovered_agent = agents_by_source.get(source_path)
+        if discovered_agent is not None:
+            if governance_profile != discovered_agent.role_id:
+                raise GovernanceError(
+                    'HERMES_AGENT_PROFILE_SOURCE_MISMATCH:{}:{}:{}'.format(
+                        index,
+                        discovered_agent.role_id,
+                        governance_profile,
+                    )
+                )
+            if slug != _slugify(discovered_agent.name):
+                raise GovernanceError(
+                    'HERMES_AGENT_SLUG_MISMATCH:{}:{}:{}'.format(
+                        index,
+                        _slugify(discovered_agent.name),
+                        slug,
+                    )
+                )
+        rendered = render_governed_body(repo_root, repo_root / source_path)
+        if body != rendered:
+            raise GovernanceError('HERMES_AGENT_BODY_MISMATCH:{}'.format(index))
+        if _hash_hex(rendered) != governance_digest:
+            raise GovernanceError('HERMES_AGENT_DIGEST_MISMATCH:{}'.format(index))
+        profile = profiles[governance_profile]
+        if profile.get("source_path") != source_path:
+            raise GovernanceError(
+                'HERMES_AGENT_PROFILE_SOURCE_MISMATCH:{}:{}:{}'.format(
+                    index,
+                    profile.get("source_path"),
+                    source_path,
+                )
+            )
+
+    if seen_profiles != expected_profiles:
+        raise GovernanceError('HERMES_GOVERNANCE_PROFILE_SET_MISMATCH')
+    if seen_sources != expected_sources:
+        raise GovernanceError('HERMES_SOURCE_PATH_SET_MISMATCH')
+    if seen_slugs != expected_slugs:
+        raise GovernanceError('HERMES_SLUG_SET_MISMATCH')
+
+    return {
+        "governance_profile_count": len(seen_profiles),
+        "record_count": len(agents_payload),
+    }
+
+
+def verify_generated(repo_root: Path, generated_root: Path, expected_agents: int, expected_tools: int) -> dict[str, Any]:
+    repo_root = repo_root.resolve()
+    raw_generated_root = generated_root
+    generated_root = _resolve_directory_before_traversal(
+        raw_generated_root,
+        symlink_code='GENERATED_ROOT_SYMLINK',
+        invalid_code='MISSING_GENERATED_ROOT',
+    )
+    if expected_agents <= 0 or expected_tools <= 0:
+        raise GovernanceError('INVALID_EXPECTATION')
+
+    tools = _load_tools_list(repo_root)
+    expected_tool_directories = _expected_tool_directories()
+    expected_tool_names = sorted(expected_tool_directories.keys())
+    agents = discover_agents(repo_root)
+    discovered_agents = len(agents)
+    if tools != expected_tool_names:
+        raise GovernanceError(
+            'EXPECTED_TOOL_SET_MISMATCH:{}:{}'.format(
+                ",".join(tools),
+                ",".join(expected_tool_names),
+            )
+        )
+    if len(tools) != expected_tools:
+        raise GovernanceError('EXPECTED_TOOLS_MISMATCH:{}:{}'.format(len(tools), expected_tools))
+    if discovered_agents != expected_agents:
+        raise GovernanceError(
+            'EXPECTED_AGENTS_MISMATCH:{}:{}'.format(discovered_agents, expected_agents)
+        )
+
+    raw_output_directories = {
+        tool: raw_generated_root / directory
+        for tool, directory in expected_tool_directories.items()
+    }
+
+    symlinked_tools = [
+        tool for tool, path in raw_output_directories.items() if path.is_symlink()
+    ]
+    if symlinked_tools:
+        raise GovernanceError(
+            'GENERATED_TOOL_ROOT_SYMLINK:{}'.format(",".join(symlinked_tools))
+        )
+    missing_tools = [
+        tool for tool, path in raw_output_directories.items() if not path.exists()
+    ]
+    if missing_tools:
+        raise GovernanceError('MISSING_TOOL_OUTPUT:{}'.format(",".join(missing_tools)))
+    non_dirs = [
+        tool for tool, path in raw_output_directories.items() if not path.is_dir()
+    ]
+    if non_dirs:
+        raise GovernanceError('INVALID_TOOL_OUTPUT:{}'.format(",".join(non_dirs)))
+    output_directories: dict[str, Path] = {}
+    for tool, path in raw_output_directories.items():
+        try:
+            resolved = path.resolve(strict=True)
+            resolved.relative_to(generated_root)
+        except (OSError, ValueError) as error:
+            raise GovernanceError(
+                'GENERATED_TOOL_ROOT_OUTSIDE_ROOT:{}'.format(tool)
+            ) from error
+        output_directories[tool] = resolved
+
+    if _count_directories(generated_root / "hermes") < 1:
+        raise GovernanceError('HERMES_PLUGIN_DIRECTORY_MISSING')
+
+    aider_file = _controlled_generated_path(
+        generated_root,
+        output_directories["aider"] / "CONVENTIONS.md",
+    )
+    windsurf_file = _controlled_generated_path(
+        generated_root,
+        output_directories["windsurf"] / ".windsurfrules",
+    )
+    hermes_root = _controlled_generated_path(
+        generated_root,
+        output_directories["hermes"] / "agency-agents-router",
+        directory=True,
+    )
+
+    profile_map = {profile["role_id"]: profile for profile in build_profiles(repo_root)}
+    discovered_ids = {agent.role_id for agent in agents}
+    for profile in profile_map.values():
+        source_path = profile.get("source_path")
+        role_id = profile.get("role_id")
+        if source_path is None or not source_path:
+            raise GovernanceError('INVALID_PROFILE_SOURCE_PATH:{}'.format(role_id))
+        if role_id in discovered_ids:
+            continue
+        raise GovernanceError(
+            'PROFILE_SOURCE_PATH_MISMATCH:{}:{}'.format(role_id, source_path)
+        )
+
+    per_tool_counts = {tool: 0 for tool in expected_tool_names}
+    aider_sections: list[str] = []
+    windsurf_sections: list[str] = []
+
+    for agent in agents:
+        source = repo_root / agent.source_path
+        source_fields, source_body = read_agent(source)
+        governance_profile = source_fields.get("governance_profile")
+        if governance_profile != agent.role_id:
+            raise GovernanceError('MISMATCHED_GOVERNANCE_BINDING:{}'.format(agent.source_path))
+        profile = profile_map.get(governance_profile)
+        if profile is None:
+            raise GovernanceError('MISSING_PROFILE:{}'.format(agent.role_id))
+        if profile.get("source_path") != agent.source_path:
+            raise GovernanceError(
+                'PROFILE_SOURCE_PATH_MISMATCH:{}:{}'.format(
+                    agent.role_id,
+                    profile.get("source_path"),
+                )
+            )
+
+        rendered_governance = render_governance(repo_root, source)
+        rendered_body = render_governed_body(repo_root, source)
+        expected_files, sections = _expected_agent_output_texts(
+            agent,
+            source_fields,
+            rendered_governance,
+            rendered_body,
+            source_body,
+        )
+        aider_sections.append(sections[0])
+        windsurf_sections.append(sections[1])
+        validated_tools: set[str] = set()
+
+        for relative_path, expected in expected_files.items():
+            # openclaw has two per-role files plus identity
+            root_name = relative_path.split("/", 1)[0]
+            root_path = output_directories[root_name]
+            artifact_path = _controlled_generated_path(
+                generated_root,
+                root_path / "/".join(relative_path.split("/", 1)[1:]),
+            )
+            validated_tools.add(root_name)
+
+            if root_name == "openclaw":
+                if artifact_path.name == "IDENTITY.md":
+                    identity_text = _read_file_text(artifact_path)
+                    if not identity_text.strip() or "企业治理提示" in identity_text:
+                        raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                else:
+                    _assert_file_contents(artifact_path, expected)
+                continue
+
+            if root_name == "codex":
+                document = _load_toml(artifact_path)
+                actual_name = document.get("name")
+                if (
+                    not isinstance(actual_name, str)
+                    or actual_name.strip() != source_fields.get("name", agent.name)
+                ):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                actual_description = document.get("description")
+                expected_description = source_fields.get("description", "")
+                if isinstance(actual_description, str):
+                    actual_description = actual_description.strip()
+                if (
+                    actual_description != expected_description
+                    and not (
+                        isinstance(actual_description, str)
+                        and len(actual_description) >= 2
+                        and actual_description[0] == actual_description[-1]
+                        and actual_description[0] in {'"', "'"}
+                        and actual_description[1:-1] == expected_description
+                    )
+                ):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                if document.get("developer_instructions") != rendered_body.rstrip("\n"):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                if set(document.keys()) - {"name", "description", "developer_instructions"}:
+                    raise GovernanceError('TOOL_FILE_EXTRA_KEYS:{}'.format(artifact_path))
+            elif root_name == "opencode":
+                generated_fields, generated_body = read_agent(artifact_path)
+                if generated_fields.get("name") != source_fields.get("name", agent.name):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                if generated_fields.get("description") != source_fields.get("description", ""):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                if generated_fields.get("mode") != "subagent":
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                if not re.fullmatch(r"#[0-9A-Fa-f]{6}", generated_fields.get("color", "")):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                if generated_body.rstrip("\n") != rendered_body.rstrip("\n"):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+            elif root_name in {
+                "antigravity",
+                "osaurus",
+                "gemini-cli",
+                "cursor",
+                "qwen",
+                "zcode",
+                "claude-code",
+                "copilot",
+            }:
+                generated_fields, generated_body = read_agent(artifact_path)
+                if generated_fields.get("description") != source_fields.get("description", ""):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                slug = _slugify(agent.name)
+                expected_names = {
+                    "antigravity": "agency-{}".format(slug),
+                    "osaurus": "agency-{}".format(slug),
+                    "gemini-cli": slug,
+                    "qwen": slug,
+                    "zcode": slug,
+                    "claude-code": source_fields.get("name", agent.name),
+                    "copilot": source_fields.get("name", agent.name),
+                }
+                if root_name in expected_names and generated_fields.get("name") != expected_names[root_name]:
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+                if generated_body.rstrip("\n") != rendered_body.rstrip("\n"):
+                    raise GovernanceError('TOOL_FILE_MISMATCH:{}'.format(artifact_path))
+            else:
+                _assert_file_contents(artifact_path, expected)
+
+        for tool in validated_tools:
+            per_tool_counts[tool] += 1
+
+    if _read_file_text(aider_file) != _expected_aider_document(aider_sections):
+        raise GovernanceError('AGGREGATE_DOCUMENT_MISMATCH:AIDER')
+    if _read_file_text(windsurf_file) != _expected_windsurf_document(windsurf_sections):
+        raise GovernanceError('AGGREGATE_DOCUMENT_MISMATCH:WINDSURF')
+    per_tool_counts["aider"] = len(aider_sections)
+    per_tool_counts["windsurf"] = len(windsurf_sections)
+    per_tool_counts["openclaw"] = _count_openclaw_workspaces(output_directories["openclaw"])
+    per_tool_counts["hermes"] = (
+        _validate_hermes_agents(
+            repo_root,
+            hermes_root,
+            expected_agents,
+        ).get("record_count")
+    )
+
+    for tool, count in sorted(per_tool_counts.items()):
+        if count != expected_agents:
+            raise GovernanceError('TOOL_COUNT_MISMATCH:{}:{}'.format(tool, count))
+
+    _ensure_token_free_texts(generated_root)
+
+    summary = {
+        "tools": len(tools),
+        "expected_tools": expected_tools,
+        "expected_agents": expected_agents,
+        "per_tool_counts": per_tool_counts,
+        "generated_root": generated_root.as_posix(),
+        "openclaw_workspaces": per_tool_counts["openclaw"],
+        "aider_sections": per_tool_counts["aider"],
+        "windsurf_sections": per_tool_counts["windsurf"],
+    }
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2))
+    return summary
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -624,11 +1419,22 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument('--output', type=Path, required=True)
     bind = commands.add_parser('bind-sources')
     bind.add_argument('--repo-root', type=Path, required=True)
+    render_governance_cmd = commands.add_parser('render-governance')
+    render_governance_cmd.add_argument('--repo-root', type=Path, required=True)
+    render_governance_cmd.add_argument('--agent', type=Path, required=True)
     render = commands.add_parser('render')
     render.add_argument('--repo-root', type=Path, required=True)
     render.add_argument('--source', type=Path, required=True)
     verify = commands.add_parser('verify-bindings')
     verify.add_argument('--repo-root', type=Path, required=True)
+    verify_generated_cmd = commands.add_parser('verify-generated')
+    verify_generated_cmd.add_argument('--repo-root', type=Path, required=True)
+    verify_generated_cmd.add_argument('--generated-root', type=Path, required=True)
+    verify_generated_cmd.add_argument('--expected-agents', type=int, required=True)
+    verify_generated_cmd.add_argument('--expected-tools', type=int, required=True)
+    manifest_cmd = commands.add_parser('manifest')
+    manifest_cmd.add_argument('--root', type=Path, required=True)
+    manifest_cmd.add_argument('--output', type=Path, required=True)
     args = parser.parse_args(argv)
     if args.command == 'build-profiles':
         write_canonical_json(args.output, build_profiles(args.repo_root.resolve()))
@@ -636,11 +1442,27 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == 'bind-sources':
         print(bind_sources(args.repo_root))
         return 0
+    if args.command == 'render-governance':
+        print(render_governance(args.repo_root.resolve(), args.agent))
+        return 0
     if args.command == 'render':
         print(render_governed_body(args.repo_root.resolve(), args.source))
         return 0
     if args.command == 'verify-bindings':
         print(verify_bindings(args.repo_root))
+        return 0
+    if args.command == 'verify-generated':
+        verify_generated(
+            args.repo_root,
+            args.generated_root,
+            args.expected_agents,
+            args.expected_tools,
+        )
+        return 0
+    if args.command == 'manifest':
+        manifest = _collect_manifest_entries(args.root, args.output)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         return 0
     raise GovernanceError('UNKNOWN_COMMAND')
 
