@@ -3,6 +3,7 @@
 .AppleDouble
 .LSOverride
 ._*
+/allure-results/
 
 # Thumbnails
 Thumbs.db
