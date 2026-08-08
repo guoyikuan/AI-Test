@@ -24,6 +24,8 @@
 #   osaurus      — Osaurus skill files (~/.osaurus/skills/<name>/SKILL.md)
 #   hermes       — Hermes lazy-router plugin (one plugin + on-disk agent index)
 #   vibe         — Mistral Vibe agent TOML + prompt files (~/.vibe/agents/*.toml + ~/.vibe/prompts/*.md)
+#   claude-code  — Claude Code identity agents (agents/<slug>.md)
+#   copilot      — Copilot identity agents (agents/<slug>.md)
 #   all          — All tools (default)
 #
 # Output is written to integrations/<tool>/ relative to the repo root.
@@ -65,6 +67,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUT_DIR="$REPO_ROOT/integrations"
 TODAY="$(date +%Y-%m-%d)"
+SOURCE_MANIFEST=""
+SOURCE_MANIFEST_OWNED=false
 
 # Shared helpers (get_field, get_body, slugify, ...)
 # shellcheck source=lib.sh
@@ -87,6 +91,154 @@ parallel_jobs_default() {
   n=$(nproc 2>/dev/null) && [[ -n "$n" ]] && echo "$n" && return
   n=$(sysctl -n hw.ncpu 2>/dev/null) && [[ -n "$n" ]] && echo "$n" && return
   echo 4
+}
+
+sha256_file() {
+  local file="$1"
+  local digest
+  digest="$(shasum -a 256 -- "$file")" || return $?
+  digest="${digest%% *}"
+  [[ "$digest" =~ ^[0-9a-f]{64}$ ]] || {
+    error "Invalid SHA-256 result for source: $file"
+    return 1
+  }
+  printf '%s' "$digest"
+}
+
+build_source_manifest() {
+  local target="$1"
+  local candidates sorted dir dirpath file first_line name digest status
+  : > "$target" || return $?
+
+  candidates="$(mktemp)" || return $?
+  sorted="$(mktemp)" || {
+    local status=$?
+    rm -f "$candidates"
+    return "$status"
+  }
+
+  for dir in "${AGENT_DIRS[@]}"; do
+    dirpath="$REPO_ROOT/$dir"
+    if [[ -L "$dirpath" || ! -d "$dirpath" ]]; then
+      error "Invalid source directory: $dirpath"
+      rm -f "$candidates" "$sorted"
+      return 1
+    fi
+    find "$dirpath" -name "*.md" -print0 > "$candidates" || {
+      status=$?
+      error "Failed to enumerate source directory: $dirpath"
+      rm -f "$candidates" "$sorted"
+      return "$status"
+    }
+    sort -z "$candidates" > "$sorted" || {
+      status=$?
+      error "Failed to sort source directory: $dirpath"
+      rm -f "$candidates" "$sorted"
+      return "$status"
+    }
+
+    while IFS= read -r -d '' file; do
+      if [[ -L "$file" || ! -f "$file" || ! -r "$file" ]]; then
+        error "Invalid source file: $file"
+        rm -f "$candidates" "$sorted"
+        return 1
+      fi
+      first_line="$(head -n 1 -- "$file")" || {
+        local status=$?
+        error "Failed to read source header: $file"
+        rm -f "$candidates" "$sorted"
+        return "$status"
+      }
+      [[ "$first_line" == "---" ]] || continue
+      name="$(get_field "name" "$file")" || {
+        local status=$?
+        error "Failed to parse source name: $file"
+        rm -f "$candidates" "$sorted"
+        return "$status"
+      }
+      if [[ -z "$name" ]]; then
+        error "Missing source name: $file"
+        rm -f "$candidates" "$sorted"
+        return 1
+      fi
+      digest="$(sha256_file "$file")" || {
+        local status=$?
+        rm -f "$candidates" "$sorted"
+        return "$status"
+      }
+      printf '%s\0%s\0' "$file" "$digest" >> "$target" || {
+        local status=$?
+        rm -f "$candidates" "$sorted"
+        return "$status"
+      }
+    done < "$sorted"
+  done
+
+  rm -f "$candidates" "$sorted"
+}
+
+verify_source_manifest() {
+  local current
+  current="$(mktemp)" || return $?
+  build_source_manifest "$current" || {
+    local status=$?
+    rm -f "$current"
+    return "$status"
+  }
+  if ! cmp -s "$SOURCE_MANIFEST" "$current"; then
+    error "Source inventory changed after it was frozen"
+    rm -f "$current"
+    return 1
+  fi
+  rm -f "$current"
+}
+
+prepare_source_manifest() {
+  if [[ -n "${AGENCY_CONVERT_SOURCE_MANIFEST:-}" ]]; then
+    SOURCE_MANIFEST="$AGENCY_CONVERT_SOURCE_MANIFEST"
+    if [[ -L "$SOURCE_MANIFEST" || ! -f "$SOURCE_MANIFEST" || ! -r "$SOURCE_MANIFEST" ]]; then
+      error "Invalid frozen source manifest: $SOURCE_MANIFEST"
+      return 1
+    fi
+  else
+    SOURCE_MANIFEST="$(mktemp)" || return $?
+    SOURCE_MANIFEST_OWNED=true
+    build_source_manifest "$SOURCE_MANIFEST" || return $?
+  fi
+  verify_source_manifest || return $?
+  export AGENCY_CONVERT_SOURCE_MANIFEST="$SOURCE_MANIFEST"
+}
+
+validate_frozen_source() {
+  local file="$1" expected_digest="$2"
+  local first_line name actual_digest
+  if [[ -L "$file" || ! -f "$file" || ! -r "$file" ]]; then
+    error "Frozen source is no longer readable: $file"
+    return 1
+  fi
+  first_line="$(head -n 1 -- "$file")" || {
+    local status=$?
+    error "Failed to read frozen source header: $file"
+    return "$status"
+  }
+  if [[ "$first_line" != "---" ]]; then
+    error "Frozen source frontmatter changed: $file"
+    return 1
+  fi
+  name="$(get_field "name" "$file")" || {
+    local status=$?
+    error "Failed to parse frozen source: $file"
+    return "$status"
+  }
+  if [[ -z "$name" ]]; then
+    error "Frozen source name is missing: $file"
+    return 1
+  fi
+  actual_digest="$(sha256_file "$file")" || return $?
+  if [[ "$actual_digest" != "$expected_digest" ]]; then
+    error "Frozen source content changed: $file"
+    return 1
+  fi
 }
 
 # --- Frontmatter helpers: get_field / get_body / slugify now live in lib.sh ---
@@ -112,10 +264,10 @@ convert_antigravity() {
   local file="$1"
   local name description slug outdir outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="agency-$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="agency-$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   outdir="$OUT_DIR/antigravity/$slug"
   outfile="$outdir/SKILL.md"
@@ -138,10 +290,10 @@ convert_osaurus() {
   local file="$1"
   local name description slug outdir outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="agency-$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="agency-$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   # Stage one dir per skill (install.sh copies into ~/.osaurus/skills/<name>/).
   outdir="$OUT_DIR/osaurus/$slug"
@@ -165,10 +317,10 @@ convert_codex() {
   local file="$1"
   local name description slug outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   outfile="$OUT_DIR/codex/agents/${slug}.toml"
   mkdir -p "$(dirname "$outfile")"
@@ -187,10 +339,10 @@ convert_gemini_cli() {
   local file="$1"
   local name description slug outdir outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   # Gemini CLI subagent format: .md file in ~/.gemini/agents/
   outdir="$OUT_DIR/gemini-cli/agents"
@@ -254,11 +406,12 @@ convert_opencode() {
   local file="$1"
   local name description color slug outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  color="$(resolve_opencode_color "$(get_field "color" "$file")")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  color="$(get_field "color" "$file")" || return $?
+  color="$(resolve_opencode_color "$color")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   outfile="$OUT_DIR/opencode/agents/${slug}.md"
   mkdir -p "$OUT_DIR/opencode/agents"
@@ -280,10 +433,10 @@ convert_cursor() {
   local file="$1"
   local name description slug outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   outfile="$OUT_DIR/cursor/rules/${slug}.mdc"
   mkdir -p "$OUT_DIR/cursor/rules"
@@ -301,82 +454,31 @@ HEREDOC
 
 convert_openclaw() {
   local file="$1"
-  local name description slug outdir body
-  local soul_content="" agents_content=""
+  local name description slug outdir body governance
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  if [[ -z "$name" ]]; then
+    return 1
+  fi
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_body "$file")" || return $?
+  governance="$(get_governance_prompt "$file")" || return $?
 
   outdir="$OUT_DIR/openclaw/$slug"
   mkdir -p "$outdir"
 
-  # Split body sections into SOUL.md (persona) vs AGENTS.md (operations)
-  # by matching ## header keywords. Unmatched sections go to AGENTS.md.
-  #
-  # SOUL keywords: identity, learning & memory, communication, style,
-  #   critical rules, rules you must follow
-  # AGENTS keywords: everything else (mission, deliverables, workflow, etc.)
-
-  local current_target="agents"  # default bucket
-  local current_section=""
-
-  while IFS= read -r line; do
-    # Detect ## headers (with or without emoji prefixes)
-    if [[ "$line" =~ ^##[[:space:]] ]]; then
-      # Flush previous section
-      if [[ -n "$current_section" ]]; then
-        if [[ "$current_target" == "soul" ]]; then
-          soul_content+="$current_section"
-        else
-          agents_content+="$current_section"
-        fi
-      fi
-      current_section=""
-
-      # Classify this header by keyword (case-insensitive)
-      local header_lower
-      header_lower="$(echo "$line" | tr '[:upper:]' '[:lower:]')"
-
-      if [[ "$header_lower" =~ identity ]] ||
-         [[ "$header_lower" =~ learning.*memory ]] ||
-         [[ "$header_lower" =~ communication ]] ||
-         [[ "$header_lower" =~ style ]] ||
-         [[ "$header_lower" =~ critical.rule ]] ||
-         [[ "$header_lower" =~ rules.you.must.follow ]]; then
-        current_target="soul"
-      else
-        current_target="agents"
-      fi
-    fi
-
-    current_section+="$line"$'\n'
-  done <<< "$body"
-
-  # Flush final section
-  if [[ -n "$current_section" ]]; then
-    if [[ "$current_target" == "soul" ]]; then
-      soul_content+="$current_section"
-    else
-      agents_content+="$current_section"
-    fi
-  fi
-
-  # Write SOUL.md — persona, tone, boundaries
-  cat > "$outdir/SOUL.md" <<HEREDOC
-${soul_content}
-HEREDOC
-
-  # Write AGENTS.md — mission, deliverables, workflow
+  # OpenClaw contract: AGENTS.md is resolved governance prompt only; SOUL.md
+  # is the unmodified persona body. IDENTITY.md remains untouched.
   cat > "$outdir/AGENTS.md" <<HEREDOC
-${agents_content}
+${governance}
 HEREDOC
+  printf '%s' "$body" > "$outdir/SOUL.md"
 
   # Write IDENTITY.md — emoji + name + vibe from frontmatter, fallback to description
   local emoji vibe
-  emoji="$(get_field "emoji" "$file")"
-  vibe="$(get_field "vibe" "$file")"
+  emoji="$(get_field "emoji" "$file")" || return $?
+  vibe="$(get_field "vibe" "$file")" || return $?
 
   if [[ -n "$emoji" && -n "$vibe" ]]; then
     cat > "$outdir/IDENTITY.md" <<HEREDOC
@@ -395,11 +497,11 @@ convert_qwen() {
   local file="$1"
   local name description tools slug outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  tools="$(get_field "tools" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  tools="$(get_field "tools" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   outfile="$OUT_DIR/qwen/agents/${slug}.md"
   mkdir -p "$(dirname "$outfile")"
@@ -430,11 +532,11 @@ convert_zcode() {
   local file="$1"
   local name description tools slug outfile body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  tools="$(get_field "tools" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  tools="$(get_field "tools" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   outfile="$OUT_DIR/zcode/agents/${slug}.md"
   mkdir -p "$(dirname "$outfile")"
@@ -467,10 +569,10 @@ convert_kimi() {
   local file="$1"
   local name description slug outdir agent_file body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   outdir="$OUT_DIR/kimi/$slug"
   agent_file="$outdir/agent.yaml"
@@ -500,10 +602,10 @@ convert_vibe() {
   local file="$1"
   local name description slug outdir agent_file prompt_file body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  slug="$(slugify "$name")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   # Mistral Vibe uses two files per agent:
   # 1. A TOML configuration file in ~/.vibe/agents/<slug>.toml
@@ -530,11 +632,59 @@ ${body}
 HEREDOC
 }
 
+convert_claude_code() {
+  local file="$1"
+  local name description slug outfile body
+
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
+
+  outfile="$OUT_DIR/claude-code/agents/${slug}.md"
+  mkdir -p "$(dirname "$outfile")"
+
+  cat > "$outfile" <<HEREDOC
+---
+name: ${name}
+description: ${description}
+---
+${body}
+HEREDOC
+}
+
+convert_copilot() {
+  local file="$1"
+  local name description slug outfile body
+
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  slug="$(slugify "$name")" || return $?
+  body="$(get_governed_body "$file")" || return $?
+
+  outfile="$OUT_DIR/github-copilot/agents/${slug}.md"
+  mkdir -p "$(dirname "$outfile")"
+
+  cat > "$outfile" <<HEREDOC
+---
+name: ${name}
+description: ${description}
+---
+${body}
+HEREDOC
+}
+
 # Aider and Windsurf are single-file formats — accumulate into temp files
 # then write at the end.
 AIDER_TMP="$(mktemp)"
 WINDSURF_TMP="$(mktemp)"
-trap 'rm -f "$AIDER_TMP" "$WINDSURF_TMP"' EXIT
+cleanup_conversion_temps() {
+  rm -f "$AIDER_TMP" "$WINDSURF_TMP"
+  if $SOURCE_MANIFEST_OWNED && [[ -n "$SOURCE_MANIFEST" ]]; then
+    rm -f "$SOURCE_MANIFEST"
+  fi
+}
+trap cleanup_conversion_temps EXIT
 
 # Write Aider/Windsurf headers once
 cat > "$AIDER_TMP" <<'HEREDOC'
@@ -564,9 +714,9 @@ accumulate_aider() {
   local file="$1"
   local name description body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   cat >> "$AIDER_TMP" <<HEREDOC
 
@@ -584,9 +734,9 @@ accumulate_windsurf() {
   local file="$1"
   local name description body
 
-  name="$(get_field "name" "$file")"
-  description="$(get_field "description" "$file")"
-  body="$(get_body "$file")"
+  name="$(get_field "name" "$file")" || return $?
+  description="$(get_field "description" "$file")" || return $?
+  body="$(get_governed_body "$file")" || return $?
 
   cat >> "$WINDSURF_TMP" <<HEREDOC
 
@@ -609,54 +759,57 @@ HEREDOC
 clean_tool_output() {
   local dir="$OUT_DIR/$1"
   [[ -d "$dir" ]] || return 0
-  find "$dir" -mindepth 1 -maxdepth 1 ! -name 'README.md' -exec rm -rf {} +
+  find "$dir" -mindepth 1 -maxdepth 1 ! -name 'README.md' -exec rm -rf {} + || return $?
 }
 
 run_conversions() {
   local tool="$1"
   local count=0
+  local status=0
 
   if [[ "$tool" == "hermes" ]]; then
     clean_tool_output "$tool"
-    python3 "$SCRIPT_DIR/build-hermes-plugin.py" --repo-root "$REPO_ROOT" --out "$OUT_DIR/hermes"
-    return
+    python3 "$SCRIPT_DIR/build-hermes-plugin.py" --repo-root "$REPO_ROOT" --out "$OUT_DIR/hermes" || return $?
+    verify_source_manifest || return $?
+    return 0
   fi
 
   clean_tool_output "$tool"
 
-  for dir in "${AGENT_DIRS[@]}"; do
-    local dirpath="$REPO_ROOT/$dir"
-    [[ -d "$dirpath" ]] || continue
+  local file expected_digest
+  while IFS= read -r -d '' file; do
+    if ! IFS= read -r -d '' expected_digest; then
+      error "Truncated frozen source manifest"
+      return 1
+    fi
+    validate_frozen_source "$file" "$expected_digest" || return $?
 
-    while IFS= read -r -d '' file; do
-      # Skip files without frontmatter (non-agent docs like QUICKSTART.md)
-      local first_line
-      first_line="$(head -1 "$file")"
-      [[ "$first_line" == "---" ]] || continue
+    case "$tool" in
+      antigravity) convert_antigravity "$file" ;;
+      codex)       convert_codex       "$file" ;;
+      gemini-cli)  convert_gemini_cli  "$file" ;;
+      opencode)    convert_opencode    "$file" ;;
+      cursor)      convert_cursor      "$file" ;;
+      openclaw)    convert_openclaw    "$file" ;;
+      claude-code) convert_claude_code "$file" ;;
+      copilot)     convert_copilot     "$file" ;;
+      qwen)        convert_qwen        "$file" ;;
+      zcode)       convert_zcode       "$file" ;;
+      kimi)        convert_kimi        "$file" ;;
+      osaurus)     convert_osaurus     "$file" ;;
+      vibe)        convert_vibe        "$file" ;;
+      aider)       accumulate_aider    "$file" ;;
+      windsurf)    accumulate_windsurf "$file" ;;
+      *)           error "Unknown tool '$tool'"; return 1 ;;
+    esac
+    status=$?
+    if (( status != 0 )); then
+      return "$status"
+    fi
+    count=$((count + 1))
+  done < "$SOURCE_MANIFEST"
 
-      local name
-      name="$(get_field "name" "$file")"
-      [[ -n "$name" ]] || continue
-
-      case "$tool" in
-        antigravity) convert_antigravity "$file" ;;
-        codex)       convert_codex       "$file" ;;
-        gemini-cli)  convert_gemini_cli  "$file" ;;
-        opencode)    convert_opencode    "$file" ;;
-        cursor)      convert_cursor      "$file" ;;
-        openclaw)    convert_openclaw    "$file" ;;
-        qwen)        convert_qwen        "$file" ;;
-        zcode)       convert_zcode       "$file" ;;
-        kimi)        convert_kimi        "$file" ;;
-        osaurus)     convert_osaurus     "$file" ;;
-        vibe)        convert_vibe        "$file" ;;
-        aider)       accumulate_aider    "$file" ;;
-        windsurf)    accumulate_windsurf "$file" ;;
-      esac
-
-      (( count++ )) || true
-    done < <(find "$dirpath" -name "*.md" -type f -print0 | sort -z)
-  done
+  verify_source_manifest || return $?
 
   echo "$count"
 }
@@ -680,7 +833,7 @@ main() {
     esac
   done
 
-  local valid_tools=("antigravity" "gemini-cli" "opencode" "cursor" "aider" "windsurf" "openclaw" "qwen" "zcode" "kimi" "codex" "osaurus" "hermes" "vibe" "all")
+  local valid_tools=("antigravity" "gemini-cli" "opencode" "cursor" "aider" "windsurf" "openclaw" "qwen" "zcode" "kimi" "codex" "osaurus" "hermes" "vibe" "claude-code" "copilot" "all")
   local valid=false
   for t in "${valid_tools[@]}"; do [[ "$t" == "$tool" ]] && valid=true && break; done
   if ! $valid; then
@@ -699,7 +852,7 @@ main() {
 
   local tools_to_run=()
   if [[ "$tool" == "all" ]]; then
-    tools_to_run=("antigravity" "gemini-cli" "opencode" "cursor" "aider" "windsurf" "openclaw" "qwen" "zcode" "kimi" "codex" "osaurus" "hermes" "vibe")
+    tools_to_run=("antigravity" "gemini-cli" "opencode" "cursor" "aider" "windsurf" "openclaw" "qwen" "zcode" "kimi" "codex" "osaurus" "hermes" "vibe" "claude-code" "copilot")
   else
     tools_to_run=("$tool")
   fi
@@ -707,41 +860,49 @@ main() {
   local total=0
 
   local n_tools=${#tools_to_run[@]}
+  prepare_source_manifest || return $?
 
   if $use_parallel && [[ "$tool" == "all" ]]; then
     # Tools that write to separate dirs can run in parallel; buffer output so each tool's output stays together
-    local parallel_tools=(antigravity gemini-cli opencode cursor openclaw qwen zcode codex osaurus hermes vibe)
+    local parallel_tools=(antigravity gemini-cli opencode cursor openclaw qwen zcode kimi codex osaurus hermes vibe claude-code copilot)
     local parallel_out_dir
     parallel_out_dir="$(mktemp -d)"
+    local status=0
     info "Converting: ${#parallel_tools[@]}/${n_tools} tools in parallel (output buffered per tool)..."
     export AGENCY_CONVERT_OUT_DIR="$parallel_out_dir"
     export AGENCY_CONVERT_SCRIPT="$SCRIPT_DIR/convert.sh"
     export AGENCY_CONVERT_OUT="$OUT_DIR"
-    printf '%s\n' "${parallel_tools[@]}" | xargs -P "$parallel_jobs" -I {} sh -c '"$AGENCY_CONVERT_SCRIPT" --tool "{}" --out "$AGENCY_CONVERT_OUT" > "$AGENCY_CONVERT_OUT_DIR/{}" 2>&1'
+    printf '%s\n' "${parallel_tools[@]}" | xargs -P "$parallel_jobs" -I {} sh -c '"$AGENCY_CONVERT_SCRIPT" --tool "{}" --out "$AGENCY_CONVERT_OUT" > "$AGENCY_CONVERT_OUT_DIR/{}" 2>&1' || {
+      status=$?
+      printf '%s\n' "${parallel_tools[@]}" | xargs -P 1 -I {} sh -c 'if [ -f "$AGENCY_CONVERT_OUT_DIR/{}" ]; then cat "$AGENCY_CONVERT_OUT_DIR/{}"; fi' 2>&1
+      rm -rf "$parallel_out_dir"
+      return "$status"
+    }
     for t in "${parallel_tools[@]}"; do
       [[ -f "$parallel_out_dir/$t" ]] && cat "$parallel_out_dir/$t"
     done
     rm -rf "$parallel_out_dir"
-    local idx=8
+    local idx="${#parallel_tools[@]}"
+    idx=$((idx + 1))
     for t in aider windsurf; do
       progress_bar "$idx" "$n_tools"
       printf "\n"
       header "Converting: $t ($idx/$n_tools)"
       local count
-      count="$(run_conversions "$t")"
+      count="$(run_conversions "$t")" || return $?
       total=$(( total + count ))
       info "Converted $count agents for $t"
-      (( idx++ )) || true
+      idx=$(( idx + 1 ))
     done
   else
     local i=0
     for t in "${tools_to_run[@]}"; do
-      (( i++ )) || true
+      i=$(( i + 1 ))
       progress_bar "$i" "$n_tools"
       printf "\n"
       header "Converting: $t ($i/$n_tools)"
       local count
-      count="$(run_conversions "$t")"
+      count="$(run_conversions "$t")" || return $?
       total=$(( total + count ))
       info "Converted $count agents for $t"
     done

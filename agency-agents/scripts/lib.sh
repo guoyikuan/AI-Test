@@ -27,7 +27,35 @@ get_field() {
 
 # get_body <file> — file contents with the leading frontmatter block stripped.
 get_body() {
-  awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$1"
+  awk 'BEGIN{fm=0} /^---$/ && fm<2{fm++; next} fm>=2{print}' "$1"
+}
+
+# get_governance_prompt <file> — governance base prompt with resolved variables.
+get_governance_prompt() {
+  local file="$1"
+  local script_dir repo_root
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  repo_root="${REPO_ROOT:-$(cd "$script_dir/.." && pwd)}"
+  local governance_prompt
+  local status=0
+  governance_prompt="$(python3 "$script_dir/governance.py" render-governance --repo-root "$repo_root" --agent "$file")"
+  status=$?
+  if (( status != 0 )); then
+    return "$status"
+  fi
+  printf '%s' "$governance_prompt"
+}
+
+# get_governed_body <file> — resolved governance prompt + original persona body.
+get_governed_body() {
+  local file="$1"
+  local governance_prompt status=0
+  governance_prompt="$(get_governance_prompt "$file")"
+  status=$?
+  if (( status != 0 )); then
+    return "$status"
+  fi
+  printf '%s\n\n%s' "$governance_prompt" "$(get_body "$file")"
 }
 
 # slugify <string> — "Frontend Developer" -> "frontend-developer"

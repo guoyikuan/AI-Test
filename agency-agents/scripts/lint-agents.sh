@@ -10,6 +10,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+AGENCY_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+
 # Keep in sync with AGENT_DIRS in scripts/convert.sh
 AGENT_DIRS=(
   academic
@@ -153,10 +156,10 @@ if [[ $# -gt 0 ]]; then
   files=("$@")
 else
   for dir in "${AGENT_DIRS[@]}"; do
-    if [[ -d "$dir" ]]; then
+    if [[ -d "$AGENCY_ROOT/$dir" ]]; then
       while IFS= read -r f; do
         files+=("$f")
-      done < <(find "$dir" -name "*.md" -type f | sort)
+      done < <(find "$AGENCY_ROOT/$dir" -name "*.md" -type f | sort)
     fi
   done
 fi

@@ -11,21 +11,24 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
+from hashlib import sha256
 import shutil
 import textwrap
 from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) in sys.path:
+    sys.path.remove(str(_REPO_ROOT))
+sys.path.insert(0, str(_REPO_ROOT))
+from scripts.governance import (
+    build_profiles,
+    discover_agents,
+    read_agent,
+    render_governed_body,
+)
+
 PLUGIN_NAME = "agency-agents-router"
-
-
-def division_dirs(repo_root: Path) -> list[str]:
-    # divisions.json (repo root) is the single source of truth for the division
-    # set. Read it rather than hardcoding a copy here: a hardcoded list silently
-    # drops new divisions from the Hermes roster (e.g. healthcare) the moment the
-    # catalog grows. check-divisions.sh guards divisions.json against the tracked
-    # dirs, so deriving from it keeps this plugin in sync by construction.
-    data = json.loads((repo_root / "divisions.json").read_text(encoding="utf-8"))
-    return sorted(data["divisions"].keys())
 
 
 def slugify(value: str) -> str:
@@ -34,49 +37,52 @@ def slugify(value: str) -> str:
     return value.strip("-")
 
 
-def parse_agent(path: Path, repo_root: Path) -> dict[str, str] | None:
-    text = path.read_text(encoding="utf-8")
-    if not text.startswith("---\n"):
-        return None
-    parts = text.split("---\n", 2)
-    if len(parts) < 3:
-        return None
-    frontmatter = parts[1]
-    body = parts[2].lstrip("\n")
-    fields: dict[str, str] = {}
-    for line in frontmatter.splitlines():
-        if ":" not in line or line.startswith((" ", "\t")):
-            continue
-        key, value = line.split(":", 1)
-        fields[key.strip()] = value.strip().strip('"').strip("'")
-    name = fields.get("name", "").strip()
-    if not name:
-        return None
-    rel = path.relative_to(repo_root)
-    division = rel.parts[0]
-    return {
-        "slug": slugify(name),
-        "name": name,
-        "description": fields.get("description", "").strip(),
-        "division": division,
-        "color": fields.get("color", "").strip(),
-        "emoji": fields.get("emoji", "").strip(),
-        "vibe": fields.get("vibe", "").strip(),
-        "source_path": str(rel),
-        "body": body,
-    }
-
-
 def collect_agents(repo_root: Path) -> list[dict[str, str]]:
+    discovered = discover_agents(repo_root)
+    profiles = {profile["role_id"]: profile for profile in build_profiles(repo_root)}
+
     agents: list[dict[str, str]] = []
-    for dirname in division_dirs(repo_root):
-        base = repo_root / dirname
-        if not base.is_dir():
-            continue
-        for path in sorted(base.rglob("*.md")):
-            parsed = parse_agent(path, repo_root)
-            if parsed:
-                agents.append(parsed)
+    for record in discovered:
+        source = repo_root / record.source_path
+        profile = profiles.get(record.role_id)
+        if profile is None:
+            raise SystemExit(f"missing governance profile for {record.role_id}")
+        if profile.get("source_path") != record.source_path:
+            raise SystemExit(
+                f"governance profile source mismatch for {record.role_id}: "
+                f"{record.source_path} != {profile.get('source_path')}"
+            )
+        if profile.get("source_hash") != record.source_sha256:
+            raise SystemExit(f"governance source hash mismatch: {record.role_id}")
+
+        fields, _ = read_agent(source)
+        name = fields.get("name", "").strip()
+        if not name:
+            raise SystemExit(f"missing agent name: {source}")
+
+        governance_profile = profile["role_id"]
+        body = render_governed_body(repo_root, source)
+        governance_digest = sha256(body.encode("utf-8")).hexdigest()
+
+        agents.append({
+            "slug": slugify(name),
+            "name": name,
+            "description": fields.get("description", "").strip(),
+            "division": record.division,
+            "color": fields.get("color", "").strip(),
+            "emoji": fields.get("emoji", "").strip(),
+            "vibe": fields.get("vibe", "").strip(),
+            "source_path": record.source_path,
+            "governance_profile": governance_profile,
+            "governance_digest": governance_digest,
+            "body": body,
+        })
+
+    if len(agents) != len(discovered):
+        raise SystemExit(
+            f"Hermes agent count mismatch: expected {len(discovered)}, got {len(agents)}"
+        )
+
     agents.sort(key=lambda item: (item["division"], item["slug"]))
     seen: set[str] = set()
     duplicates: set[str] = set()

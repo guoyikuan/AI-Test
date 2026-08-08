@@ -38,7 +38,7 @@ The agent searches memory for RetroBoard context, finds the sprint plan and rese
 
 ## Setup
 
-Install any MCP-compatible memory server that supports `remember`, `recall`, and `rollback` operations. See [integrations/mcp-memory/README.md](../integrations/mcp-memory/README.md) for setup.
+Install any MCP-compatible memory server that supports `remember`, `recall`, and `rollback` operations. See [mcp-memory/README.md](../mcp-memory/README.md) for setup.
 
 ## The Scenario
 
@@ -56,7 +56,7 @@ Same as the standard workflow: a SaaS team retrospective tool (RetroBoard), 4 we
 | Growth Hacker | Plan launch strategy while building |
 | Reality Checker | Gate each milestone before moving on |
 
-Each agent has a Memory Integration section in their prompt (see [integrations/mcp-memory/README.md](../integrations/mcp-memory/README.md) for how to add it).
+Each agent has a Memory Integration section in their prompt (see [mcp-memory/README.md](../mcp-memory/README.md) for how to add it).
 
 ## The Workflow
 

@@ -1,0 +1,287 @@
+{
+  "schema": "agency-agents.local-frozen-action-manifest/v1",
+  "entrySha256": "f0610cabef0c689ff6c4567dd4c2794893664d8267af682ac4b9c704019e9bbd",
+  "generatedAt": "2026-08-02T21:00:00Z",
+  "sourceRoot": "integrations",
+  "sourceRootDigest": "65958cac2412f3c943429ac1694bf5563a3588ac5b65c995568e08be28c1bcb2",
+  "sourceRoleCount": 269,
+  "roleSetPath": "../governance/role-governance-profiles.json",
+  "roleSetCount": 269,
+  "roleSetSha256": "974d269ced0642cd1c14bb9ed716f55fc3a940fab6b8ff2c9451d11b9f0dff07",
+  "roleSetFileSha256": "ad7616f4520eb5c5727cad1f7992c4fa6ad881dcba728266ab2cdb0c55608e20",
+  "expectedSections": 269,
+  "tools": [
+    {
+      "name": "aider",
+      "installTool": "aider",
+      "sourceDir": "aider",
+      "sourceType": "single-file",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "aider-single",
+          "kind": "file",
+          "stagePath": "${PROJECT}/CONVENTIONS.md",
+          "targetPath": "${PROJECT}/CONVENTIONS.md",
+          "ownerMode": "whole-file"
+        }
+      ]
+    },
+    {
+      "name": "antigravity",
+      "installTool": "antigravity",
+      "sourceDir": "antigravity",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "antigravity",
+          "kind": "directory",
+          "stagePath": "${HOME}/.gemini/config/skills",
+          "targetPath": "${HOME}/.gemini/config/skills",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "claude-code",
+      "installTool": "claude-code",
+      "sourceDir": "claude-code",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "claude-code",
+          "kind": "directory",
+          "stagePath": "${HOME}/.claude/agents",
+          "targetPath": "${HOME}/.claude/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "github-copilot",
+      "installTool": "copilot",
+      "sourceDir": "github-copilot",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "copilot-github",
+          "kind": "directory",
+          "stagePath": "${HOME}/.github/agents",
+          "targetPath": "${HOME}/.github/agents",
+          "ownerMode": "source-top-level"
+        },
+        {
+          "label": "copilot-local",
+          "kind": "directory",
+          "stagePath": "${HOME}/.copilot/agents",
+          "targetPath": "${HOME}/.copilot/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "codex",
+      "installTool": "codex",
+      "sourceDir": "codex",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "codex",
+          "kind": "directory",
+          "stagePath": "${HOME}/.codex/agents",
+          "targetPath": "${HOME}/.codex/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "cursor",
+      "installTool": "cursor",
+      "sourceDir": "cursor",
+      "sourceType": "rules-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "cursor",
+          "kind": "directory",
+          "stagePath": "${PROJECT}/.cursor/rules",
+          "targetPath": "${PROJECT}/.cursor/rules",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "gemini-cli",
+      "installTool": "gemini-cli",
+      "sourceDir": "gemini-cli",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "gemini-cli",
+          "kind": "directory",
+          "stagePath": "${HOME}/.gemini/agents",
+          "targetPath": "${HOME}/.gemini/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "kimi",
+      "installTool": "kimi",
+      "sourceDir": "kimi",
+      "sourceType": "multi-file-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "kimi",
+          "kind": "directory",
+          "createIfMissing": true,
+          "stagePath": "${HOME}/.config/kimi/agents",
+          "targetPath": "${HOME}/.config/kimi/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "openclaw",
+      "installTool": "openclaw",
+      "sourceDir": "openclaw",
+      "sourceType": "workspace-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "openclaw",
+          "kind": "directory",
+          "stagePath": "${HOME}/.openclaw/agency-agents",
+          "targetPath": "${HOME}/.openclaw/agency-agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "opencode",
+      "installTool": "opencode",
+      "sourceDir": "opencode",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "opencode",
+          "kind": "directory",
+          "stagePath": "${PROJECT}/.opencode/agents",
+          "targetPath": "${PROJECT}/.opencode/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "osaurus",
+      "installTool": "osaurus",
+      "sourceDir": "osaurus",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "osaurus",
+          "kind": "directory",
+          "stagePath": "${HOME}/.osaurus/skills",
+          "targetPath": "${HOME}/.osaurus/skills",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "qwen",
+      "installTool": "qwen",
+      "sourceDir": "qwen",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "qwen",
+          "kind": "directory",
+          "createIfMissing": true,
+          "stagePath": "${PROJECT}/.qwen/agents",
+          "targetPath": "${PROJECT}/.qwen/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "hermes",
+      "installTool": "hermes",
+      "sourceDir": "hermes",
+      "sourceType": "plugin-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "hermes",
+          "kind": "directory",
+          "stagePath": "${HOME}/.hermes/plugins/agency-agents-router",
+          "targetPath": "${HOME}/.hermes/plugins/agency-agents-router",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "vibe",
+      "installTool": "vibe",
+      "sourceDir": "vibe",
+      "sourceType": "split-dirs",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "vibe-agents",
+          "kind": "directory",
+          "stagePath": "${HOME}/.vibe/agents",
+          "targetPath": "${HOME}/.vibe/agents",
+          "ownerMode": "source-top-level"
+        },
+        {
+          "label": "vibe-prompts",
+          "kind": "directory",
+          "stagePath": "${HOME}/.vibe/prompts",
+          "targetPath": "${HOME}/.vibe/prompts",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    },
+    {
+      "name": "windsurf",
+      "installTool": "windsurf",
+      "sourceDir": "windsurf",
+      "sourceType": "single-file",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "windsurf",
+          "kind": "file",
+          "stagePath": "${PROJECT}/.windsurfrules",
+          "targetPath": "${PROJECT}/.windsurfrules",
+          "ownerMode": "whole-file"
+        }
+      ]
+    },
+    {
+      "name": "zcode",
+      "installTool": "zcode",
+      "sourceDir": "zcode",
+      "sourceType": "agents-dir",
+      "sectionCount": 269,
+      "targets": [
+        {
+          "label": "zcode",
+          "kind": "directory",
+          "stagePath": "${HOME}/.zcode/agents",
+          "targetPath": "${HOME}/.zcode/agents",
+          "ownerMode": "source-top-level"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Deterministically resolve governance profiles from Agency Agent sources."""
 from __future__ import annotations
+
+from datetime import datetime, timezone
 import argparse
 import hashlib
 import json
@@ -87,6 +89,21 @@ _MUSTACHE_TOKEN = re.compile(r'\{\{[^{}\r\n]+\}\}')
 _UNRESOLVED_GOVERNANCE_TOKEN = re.compile(
     r"\{\{(?:ROLE_NAME|ALLOWED_READ_ACTIONS|ALLOWED_WRITE_ACTIONS|FORBIDDEN_ACTIONS|RISK_RULES|APPROVAL_MATRIX|ALLOWED_SYSTEMS)\}\}"
 )
+_SENSITIVE_TOKEN_PATTERNS = (
+    (
+        "PEM_PRIVATE_KEY_BLOCK",
+        re.compile(
+            r"-----BEGIN[^\n]*PRIVATE KEY-----.*?-----END[^\n]*PRIVATE KEY-----",
+            re.IGNORECASE | re.DOTALL,
+        ),
+    ),
+    (
+        "LONG_SECRET_CREDENTIAL",
+        re.compile(
+            r"(?i)\b(?:api[_-]?key|access[_-]?token|auth(?:orization)?\s*token|secret[_-]?key)\s*[:=]\s*['\"]?[A-Za-z0-9_+/=-]{24,}['\"]?",
+        ),
+    ),
+)
 _BINDING_TMP_PREFIX = '.governance-bind-'
 
 
@@ -154,6 +171,28 @@ def read_agent(path: Path) -> tuple[dict[str, str], str]:
     except UnicodeDecodeError as error:
         raise GovernanceError('INVALID_UTF8_SOURCE:{}'.format(path)) from error
     return _parse_frontmatter_fields(frontmatter), body
+
+
+def _get_raw_frontmatter_value(path: Path, key: str) -> str | None:
+    """Return raw frontmatter value for a key, preserving surrounding quotes.
+
+    This mirrors the legacy Bash `get_field` behavior used by convert.sh.
+    """
+    try:
+        content = path.read_bytes()
+    except OSError:
+        return None
+    start, body_start = _frontmatter_bounds(content, path)
+    if start is None:
+        return None
+    try:
+        frontmatter = content[start:body_start].decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    for line in frontmatter.splitlines():
+        if line.startswith(f"{key}: "):
+            return line[len(f"{key}: "):]
+    return None
 
 
 def _source_paths(repo_root: Path) -> list[Path]:
@@ -385,18 +424,34 @@ def _compact_list(values: Any) -> str:
     return '无' if not values else '、'.join(str(value) for value in values)
 
 
-def _compact_matrix(matrix: Any) -> str:
+def _compact_matrix(matrix: Any, side_effects: Any = ()) -> str:
     if not isinstance(matrix, dict):
         raise GovernanceError('INVALID_APPROVAL_MATRIX')
     labels = {
         'low': '低风险',
         'medium': '中风险',
         'high': '高风险',
+        'write': '写入',
+        'external_side_effect': '外部副作用',
     }
+    requested_side_effects = (
+        side_effects
+        if isinstance(side_effects, (list, tuple))
+        else ()
+    )
     return '；'.join(
-        '{}：{}'.format(labels[key], matrix[key])
+        '{}：{}'.format(
+            labels[key],
+            matrix.get(key, '无'),
+        )
         for key in ('low', 'medium', 'high')
-        if key in matrix
+        if key in matrix or key in ('low', 'medium', 'high')
+    ) + '；{}：{}'.format(
+        labels['write'],
+        matrix['high'] if 'write' in requested_side_effects else '无',
+    ) + '；{}：{}'.format(
+        labels['external_side_effect'],
+        matrix['high'] if 'external_side_effect' in requested_side_effects else '无',
     )
 
 
@@ -428,7 +483,10 @@ def render_governance(repo_root: Path, source: Path) -> str:
         'ALLOWED_WRITE_ACTIONS': _compact_list(profile['allowed_write_actions']),
         'FORBIDDEN_ACTIONS': _compact_list(profile['forbidden_actions']),
         'RISK_RULES': _compact_list(profile['risk_rules']),
-        'APPROVAL_MATRIX': _compact_matrix(profile['approval_matrix']),
+        'APPROVAL_MATRIX': _compact_matrix(
+            profile['approval_matrix'],
+            profile.get('side_effects', ()),
+        ),
         'ALLOWED_SYSTEMS': _compact_list(profile['allowed_systems']),
     }
     rendered = template
@@ -742,7 +800,7 @@ def _resolve_opencode_color(color_value: str) -> str:
 
 
 def _expected_aider_section(name: str, description: str, body: str) -> str:
-    return "\n\n---\n\n## {}\n\n> {}\n\n{}\n".format(
+    return "\n---\n\n## {}\n\n> {}\n\n{}\n".format(
         name,
         description,
         body,
@@ -784,7 +842,12 @@ def _expected_aider_document(sections: list[str]) -> str:
 
 
 def _expected_windsurf_document(sections: list[str]) -> str:
-    return _WINDSURF_HEADER + ''.join(sections)
+    if not sections:
+        return _WINDSURF_HEADER
+    normalized_sections = [
+        section.removeprefix("\n") + "\n" for section in sections
+    ]
+    return _WINDSURF_HEADER + normalized_sections[0] + ''.join(normalized_sections[1:])
 
 
 def _expected_agent_output_texts(
@@ -793,6 +856,7 @@ def _expected_agent_output_texts(
     rendered_governance: str,
     rendered_body: str,
     persona_body: str,
+    source_path: Path | None = None,
 ) -> tuple[dict[str, str], list[str]]:
     """Return expected text map and expected section blocks for aggregate tools."""
     rendered_governance = rendered_governance.rstrip("\n")
@@ -801,13 +865,19 @@ def _expected_agent_output_texts(
     slug = _slugify(agent.name)
     description = source_fields.get('description', '')
     name = source_fields.get('name', agent.name)
+    prompt_description = description
+    prompt_name = name
+    if source_path is not None:
+        prompt_name = _get_raw_frontmatter_value(source_path, "name") or name
+        prompt_description = _get_raw_frontmatter_value(source_path, "description") or description
+        description = prompt_description
     tools = source_fields.get('tools', '')
     emoji = source_fields.get('emoji', '')
     vibe = source_fields.get('vibe', '')
 
     aggregate_sections = [
-        _expected_aider_section(name, description, rendered_body),
-        _expected_windsurf_section(name, description, rendered_body),
+        _expected_aider_section(prompt_name, description, rendered_body),
+        _expected_windsurf_section(prompt_name, description, rendered_body),
     ]
 
     outputs: dict[str, str] = {
@@ -856,16 +926,16 @@ def _expected_agent_output_texts(
             slug,
         ),
         "kimi/{}/system.md".format(slug): "# {}\n\n{}\n\n{}\n".format(
-            name,
-            description,
+            prompt_name,
+            prompt_description,
             rendered_body,
         ),
         "vibe/agents/{}.toml".format(slug): 'agent_type = "agent"\nsystem_prompt_id = "{}"\n'.format(
             slug
         ),
         "vibe/prompts/{}.md".format(slug): "# {}\n\n{}\n\n{}\n".format(
-            name,
-            description,
+            prompt_name,
+            prompt_description,
             rendered_body,
         ),
         "claude-code/agents/{}.md".format(slug): _expected_frontmatter_text(
@@ -976,7 +1046,29 @@ def _validate_unresolved_governance_tokens(text: str, target: Path) -> None:
         )
 
 
-def _ensure_token_free_texts(generated_root: Path) -> None:
+def _file_sha256(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as error:
+        raise GovernanceError('MISSING_SOURCE_INPUT:{}'.format(path)) from error
+
+
+def _collect_source_input_hashes(repo_root: Path) -> dict[str, str]:
+    paths = {
+        "department_policies": repo_root / "governance" / "department-policies.json",
+        "role_overrides": repo_root / "governance" / "role-overrides.json",
+        "role_governance_profiles": repo_root / "governance" / "role-governance-profiles.json",
+        "tools": repo_root / "tools.json",
+    }
+    return {name: _file_sha256(path) for name, path in paths.items()}
+
+
+def _ensure_token_free_texts(generated_root: Path) -> dict[str, Any]:
+    generated_root = generated_root.resolve()
+    matches: list[dict[str, str]] = []
+    by_label: dict[str, int] = {
+        label: 0 for label, _ in _SENSITIVE_TOKEN_PATTERNS
+    }
     for path in sorted(generated_root.rglob("*")):
         if path.is_symlink():
             raise GovernanceError('GENERATED_ARTIFACT_SYMLINK:{}'.format(path))
@@ -996,8 +1088,94 @@ def _ensure_token_free_texts(generated_root: Path) -> None:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+        for label, pattern in _SENSITIVE_TOKEN_PATTERNS:
+            if pattern.search(text):
+                by_label[label] = by_label.get(label, 0) + 1
+                matches.append({"label": label, "path": path.as_posix()})
+                break
         _validate_unresolved_governance_tokens(text, path)
 
+    return {
+        "total_hits": len(matches),
+        "by_label": by_label,
+        "matches": matches,
+    }
+
+
+def verify_all(
+    repo_root: Path,
+    generated_root: Path,
+    *,
+    expected_agents: int | None = None,
+    expected_tools: int | None = None,
+) -> dict[str, Any]:
+    repo_root = repo_root.resolve()
+    generated_root = _resolve_directory_before_traversal(
+        generated_root,
+        symlink_code='GENERATED_ROOT_SYMLINK',
+        invalid_code='MISSING_GENERATED_ROOT',
+    )
+    tools = _load_tools_list(repo_root)
+    discovered_agents = discover_agents(repo_root)
+    if expected_agents is None:
+        expected_agents = len(discovered_agents)
+    elif expected_agents <= 0:
+        raise GovernanceError('INVALID_EXPECTATION')
+
+    if expected_tools is None:
+        expected_tools = len(tools)
+    elif expected_tools <= 0:
+        raise GovernanceError('INVALID_EXPECTATION')
+
+    verify_bindings(repo_root)
+    generated_summary = verify_generated(
+        repo_root,
+        generated_root,
+        expected_agents,
+        expected_tools,
+    )
+    manifest_entries = _collect_manifest_entries(generated_root)
+    manifest_payload = json.dumps(
+        manifest_entries, ensure_ascii=False, sort_keys=True, indent=2
+    ).encode("utf-8")
+    manifest_hash = hashlib.sha256(manifest_payload).hexdigest()
+    managed_roots = sorted(set(_expected_tool_directories().values()))
+    manifest_roots = sorted(
+        {entry["path"].split("/", 1)[0] for entry in manifest_entries}
+    )
+    if manifest_roots != managed_roots:
+        raise GovernanceError(
+            'VERIFY_ALL_MANIFEST_TOOL_MISMATCH:{}:{}'.format(
+                ",".join(manifest_roots),
+                ",".join(managed_roots),
+            )
+        )
+
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "environment": {
+            "python": sys.version.split()[0],
+            "repo_root": repo_root.as_posix(),
+            "generated_root": generated_root.as_posix(),
+        },
+        "acceptance": {
+            "expected_agents": expected_agents,
+            "expected_tools": expected_tools,
+            "exact_count_required": True,
+        },
+        "source_input_hashes": _collect_source_input_hashes(repo_root),
+        "generated_summary": generated_summary,
+        "manifest": {
+            "tool_roots": managed_roots,
+            "manifest_roots": manifest_roots,
+            "entry_count": len(manifest_entries),
+            "sha256": manifest_hash,
+        },
+        "unresolved_blockers": [],
+        "rollback_reference": {
+            "source_agents": [agent.role_id for agent in sorted(discovered_agents, key=lambda agent: agent.role_id)],
+        },
+    }
 
 def _expected_tool_directories() -> dict[str, str]:
     return {
@@ -1173,6 +1351,7 @@ def verify_generated(repo_root: Path, generated_root: Path, expected_agents: int
     expected_tool_directories = _expected_tool_directories()
     expected_tool_names = sorted(expected_tool_directories.keys())
     agents = discover_agents(repo_root)
+    ordered_agents = sorted(agents, key=lambda agent: agent.source_path)
     discovered_agents = len(agents)
     if tools != expected_tool_names:
         raise GovernanceError(
@@ -1186,6 +1365,16 @@ def verify_generated(repo_root: Path, generated_root: Path, expected_agents: int
     if discovered_agents != expected_agents:
         raise GovernanceError(
             'EXPECTED_AGENTS_MISMATCH:{}:{}'.format(discovered_agents, expected_agents)
+        )
+
+    token_scan = _ensure_token_free_texts(generated_root)
+    if token_scan["total_hits"]:
+        first_path = token_scan["matches"][0]["path"]
+        raise GovernanceError(
+            'SENSITIVE_TOKEN_DETECTED:count={}:path={}'.format(
+                token_scan["total_hits"],
+                first_path,
+            )
         )
 
     raw_output_directories = {
@@ -1255,7 +1444,7 @@ def verify_generated(repo_root: Path, generated_root: Path, expected_agents: int
     aider_sections: list[str] = []
     windsurf_sections: list[str] = []
 
-    for agent in agents:
+    for agent in ordered_agents:
         source = repo_root / agent.source_path
         source_fields, source_body = read_agent(source)
         governance_profile = source_fields.get("governance_profile")
@@ -1280,6 +1469,7 @@ def verify_generated(repo_root: Path, generated_root: Path, expected_agents: int
             rendered_governance,
             rendered_body,
             source_body,
+            source_path=source,
         )
         aider_sections.append(sections[0])
         windsurf_sections.append(sections[1])
@@ -1395,8 +1585,6 @@ def verify_generated(repo_root: Path, generated_root: Path, expected_agents: int
         if count != expected_agents:
             raise GovernanceError('TOOL_COUNT_MISMATCH:{}:{}'.format(tool, count))
 
-    _ensure_token_free_texts(generated_root)
-
     summary = {
         "tools": len(tools),
         "expected_tools": expected_tools,
@@ -1406,6 +1594,7 @@ def verify_generated(repo_root: Path, generated_root: Path, expected_agents: int
         "openclaw_workspaces": per_tool_counts["openclaw"],
         "aider_sections": per_tool_counts["aider"],
         "windsurf_sections": per_tool_counts["windsurf"],
+        "token_scan": token_scan,
     }
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True, indent=2))
     return summary
@@ -1432,6 +1621,12 @@ def main(argv: list[str] | None = None) -> int:
     verify_generated_cmd.add_argument('--generated-root', type=Path, required=True)
     verify_generated_cmd.add_argument('--expected-agents', type=int, required=True)
     verify_generated_cmd.add_argument('--expected-tools', type=int, required=True)
+    verify_all_cmd = commands.add_parser('verify-all')
+    verify_all_cmd.add_argument('--repo-root', type=Path, required=True)
+    verify_all_cmd.add_argument('--generated-root', type=Path, required=True)
+    verify_all_cmd.add_argument('--output', type=Path, required=True)
+    verify_all_cmd.add_argument('--expected-agents', type=int)
+    verify_all_cmd.add_argument('--expected-tools', type=int)
     manifest_cmd = commands.add_parser('manifest')
     manifest_cmd.add_argument('--root', type=Path, required=True)
     manifest_cmd.add_argument('--output', type=Path, required=True)
@@ -1457,6 +1652,20 @@ def main(argv: list[str] | None = None) -> int:
             args.generated_root,
             args.expected_agents,
             args.expected_tools,
+        )
+        return 0
+    if args.command == 'verify-all':
+        output = verify_all(
+            args.repo_root,
+            args.generated_root,
+            expected_agents=args.expected_agents,
+            expected_tools=args.expected_tools,
+        )
+        report_path = args.output
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(output, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
         )
         return 0
     if args.command == 'manifest':

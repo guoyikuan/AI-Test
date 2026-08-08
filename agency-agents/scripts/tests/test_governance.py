@@ -24,9 +24,11 @@ from scripts.governance import (
     read_agent,
     verify_generated,
     verify_bindings,
+    verify_all,
     render_governance,
     render_governed_body,
     stable_source_hash,
+    _ensure_token_free_texts,
 )
 
 
@@ -430,6 +432,49 @@ class GovernanceContractTests(unittest.TestCase):
                     rendered,
                     agent.source_path,
                 )
+
+    def test_rendered_prompt_includes_side_effect_matrix_items(self):
+        profile = self._valid_profile()
+        sample_agent = discover_agents(ROOT)[0]
+
+        with patch.object(governance, "_bound_profile", return_value=(profile, sample_agent.source_path)):
+            rendered = render_governance(ROOT, ROOT / sample_agent.source_path)
+
+        self.assertIn("低风险：self-service", rendered)
+        self.assertIn("中风险：current-user-approval", rendered)
+        self.assertIn("高风险：current-user-and-supervisor", rendered)
+        self.assertIn("写入：current-user-and-supervisor", rendered)
+        self.assertIn("外部副作用：current-user-and-supervisor", rendered)
+
+    def test_windsurf_aggregate_includes_side_effect_matrix_items(self):
+        profile = self._valid_profile()
+        sample_agent = discover_agents(ROOT)[0]
+        source = ROOT / sample_agent.source_path
+        source_fields, source_body = read_agent(source)
+        with patch.object(
+            governance,
+            "_bound_profile",
+            return_value=(profile, sample_agent.source_path),
+        ):
+            governed = render_governed_body(ROOT, source)
+            governance_text = render_governance(ROOT, source)
+
+        _, sections = governance._expected_agent_output_texts(
+            sample_agent,
+            source_fields,
+            governance_text,
+            governed,
+            source_body,
+            source_path=source,
+        )
+
+        aggregate = governance._expected_windsurf_document([sections[1]])
+
+        self.assertIn("低风险：self-service", aggregate)
+        self.assertIn("中风险：current-user-approval", aggregate)
+        self.assertIn("高风险：current-user-and-supervisor", aggregate)
+        self.assertIn("写入：current-user-and-supervisor", aggregate)
+        self.assertIn("外部副作用：current-user-and-supervisor", aggregate)
 
     def _isolated_repo_fixture(self):
         directory = tempfile.TemporaryDirectory()
@@ -1066,6 +1111,7 @@ class GovernanceContractTests(unittest.TestCase):
             "Governance",
             governed,
             persona,
+            source_path=source,
         )
         tool_directories = _expected_tool_directories()
         for directory_name in tool_directories.values():
@@ -1092,6 +1138,10 @@ class GovernanceContractTests(unittest.TestCase):
             encoding="utf-8",
         )
         (generated_root / "hermes" / "agency-agents-router").mkdir()
+        (generated_root / "hermes" / "agent-manifest.json").write_text(
+            "{}\n",
+            encoding="utf-8",
+        )
         return repo_root, generated_root, agent
 
     def _verify_minimal_generated(self, repo_root: Path, generated_root: Path, agent: Agent):
@@ -1233,6 +1283,137 @@ class GovernanceContractTests(unittest.TestCase):
                                         1,
                                         len(tool_dirs),
                                     )
+
+    def _minimal_verify_all_fixture(self, base: Path) -> tuple[Path, Path, Agent]:
+        return self._minimal_generated_fixture(base)
+
+    def _minimal_verify_all_patches(self, agent, hashes: dict[str, str], output: bool = True):
+        tool_names = sorted(_expected_tool_directories().keys())
+        profile = {
+            "role_id": agent.role_id,
+            "source_path": agent.source_path,
+        }
+        return patch.object(
+            governance,
+            "discover_agents",
+            return_value=[agent],
+        ), patch.object(
+            governance,
+            "_load_tools_list",
+            return_value=tool_names,
+        ), patch.object(
+            governance,
+            "build_profiles",
+            return_value=[profile],
+        ), patch.object(
+            governance,
+            "render_governance",
+            return_value="Governance",
+        ), patch.object(
+            governance,
+            "render_governed_body",
+            return_value="Governance\n\nPersona",
+        ), patch.object(
+            governance,
+            "_validate_hermes_agents",
+            return_value={"record_count": 1},
+        ), patch.object(
+            governance,
+            "verify_bindings",
+            return_value=1,
+        ), patch.object(
+            governance,
+            "_collect_source_input_hashes",
+            return_value=hashes,
+        )
+
+    def test_verify_all_cli_accepts_and_writes_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            repo_root, generated_root, agent = self._minimal_verify_all_fixture(base)
+            output = repo_root / "verify-all-report.json"
+            hashes = {
+                "department_policies": "a" * 64,
+                "role_overrides": "b" * 64,
+                "role_governance_profiles": "c" * 64,
+                "tools": "d" * 64,
+            }
+            patches = self._minimal_verify_all_patches(
+                agent,
+                hashes=hashes,
+            )
+            with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7]:
+                self.assertEqual(
+                    governance.main(
+                        [
+                            "verify-all",
+                            "--repo-root",
+                            str(repo_root),
+                            "--generated-root",
+                            str(generated_root),
+                            "--output",
+                            str(output),
+                            "--expected-agents",
+                            "1",
+                            "--expected-tools",
+                            "16",
+                        ]
+                    ),
+                    0,
+                )
+            report = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(report["acceptance"]["expected_agents"], 1)
+            self.assertEqual(report["acceptance"]["expected_tools"], 16)
+            self.assertEqual(report["source_input_hashes"], hashes)
+            self.assertEqual(report["generated_summary"]["expected_agents"], 1)
+            self.assertEqual(report["generated_summary"]["expected_tools"], 16)
+            self.assertEqual(report["generated_summary"]["token_scan"]["total_hits"], 0)
+
+    def test_verify_all_rejects_verify_all_when_generated_has_sensitive_credentials(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            repo_root, generated_root, agent = self._minimal_verify_all_fixture(base)
+            (generated_root / "kimi" / "frontend-developer" / "system.md").write_text(
+                (
+                    "-----BEGIN PRIVATE KEY-----\n"
+                    "MIIEpAIBAAKCAQEA1\n"
+                    "-----END PRIVATE KEY-----\n"
+                ),
+                encoding="utf-8",
+            )
+            hashes = {
+                "department_policies": "a" * 64,
+                "role_overrides": "b" * 64,
+                "role_governance_profiles": "c" * 64,
+                "tools": "d" * 64,
+            }
+            patches = self._minimal_verify_all_patches(
+                agent,
+                hashes=hashes,
+            )
+            with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7]:
+                with self.assertRaisesRegex(
+                    GovernanceError,
+                    "SENSITIVE_TOKEN_DETECTED",
+                ):
+                    verify_all(
+                        repo_root,
+                        generated_root,
+                        expected_agents=1,
+                        expected_tools=16,
+                    )
+
+    def test_token_scan_does_not_treat_plain_text_as_sensitive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            note = root / "notes.md"
+            note.write_text(
+                "This document only uses the words private key for explanation.\n",
+                encoding="utf-8",
+            )
+            scan = _ensure_token_free_texts(root)
+            self.assertEqual(scan["total_hits"], 0)
+            self.assertIn("PEM_PRIVATE_KEY_BLOCK", scan["by_label"])
 
 
 if __name__ == "__main__":
