@@ -1,0 +1,54 @@
+{
+  "schema": "shangdao.meta-governance-adapter/v1",
+  "classification": "platform-adapter",
+  "default_activation": false,
+  "canonical_entity_id": "skill:codex:shangdao-meta-governance",
+  "canonical_owner": "codex-local",
+  "canonical_scope": "codex",
+  "canonical_root_template": "${CODEX_HOME}/skills/shangdao-meta-governance",
+  "registry_path_template": "${CODEX_HOME}/skill-portfolio/registry.json",
+  "registry_key": "shangdao-meta-governance",
+  "canonical_tree_sha256": "24623e3c8815e24b4ef3a5aa7c13d078669b0a12ba0d33c20bd6fe36b8e214f2",
+  "entrypoint": "scripts/validate_shangdao_meta_governance.py",
+  "delegated_commands": [
+    "preflight",
+    "decision",
+    "verify",
+    "self-test"
+  ],
+  "canonical_files": [
+    {
+      "path": "SKILL.md",
+      "sha256": "e12f414a9a54f611cf8126e8e8eb1b800886b258abae7f40cdafc0d8a70f64f2"
+    },
+    {
+      "path": "contracts/shangdao.meta-governance.v1.example.json",
+      "sha256": "33493dfa5eda51115a188ee9ea15c4fd20bfb2cc5f612625c6336aefb13e4a80"
+    },
+    {
+      "path": "references/shangdao.meta-governance.schema.json",
+      "sha256": "2231c12db3714516b99404a97a0709f11a2aa11dd9b327137caad3c30aad68d6"
+    },
+    {
+      "path": "scripts/validate_shangdao_meta_governance.py",
+      "sha256": "5939974e6275c47698ab617788ff9e1a240043bb6ae57b8d1da80b386cb5e7d6"
+    }
+  ],
+  "state_owner": "codex-local",
+  "repository_state": "adapter-only",
+  "requested_writes": [],
+  "permission_delta": {
+    "added": [],
+    "removed": [],
+    "expands_permissions": false
+  },
+  "handoff_contract": "aicc.agent-handoff/v1",
+  "failure_behavior": "fail-closed",
+  "error_codes": [
+    "SHANGDAO_ADAPTER_BINDING_INVALID",
+    "SHANGDAO_ADAPTER_CANONICAL_MISSING",
+    "SHANGDAO_ADAPTER_CANONICAL_TAMPER",
+    "SHANGDAO_ADAPTER_OWNER_MISMATCH",
+    "SHANGDAO_ADAPTER_UNSUPPORTED_COMMAND"
+  ]
+}

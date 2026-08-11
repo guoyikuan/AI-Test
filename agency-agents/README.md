@@ -33,6 +33,8 @@ Born from a Reddit thread and months of iteration, **The Agency** is a growing c
 
 Reusable Skill, Agent, orchestration, evaluation, and governance evolution in this repository follows the [Agent / Skill 受控自动演进政策](governance/agent-skill-evolution-policy.zh-CN.md).
 
+For work coordinated by 商道, use the content-addressed [Shangdao meta-governance adapter](governance/shangdao-meta-governance-adapter.json). The adapter keeps the Codex-local `shangdao-meta-governance` Skill as the sole canonical owner and delegates its deterministic `preflight`, `decision`, `verify`, and `self-test` commands without copying the implementation into this repository.
+
 ---
 
 ## ⚡ Quick Start
